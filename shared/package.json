@@ -1,0 +1,11 @@
+{
+  "name": "@cptm/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Regras e dados comuns ao web e ao mobile do SSL CPTM (sem dependências).",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}
