@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "CPTM SSL",
+    "slug": "cptm-ssl-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "O CPTM SSL usa a câmera para fotografar o equipamento com avaria.",
+          "photosPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ]
+  }
+}
