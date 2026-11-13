@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { mensagemDeErro, podeAssumir } from '../../../shared/src/index.js';
+import { ehMinhaOsmAberta, mensagemDeErro, podeAssumir } from '../../../shared/src/index.js';
+import { useAuth } from '../auth/AuthContext';
 import { api } from '../api';
 import { cores, medidas } from '../tema';
 import { useRecurso } from '../useRecurso';
@@ -14,6 +15,7 @@ export default function DetalheOsm({ route, navigation }) {
   const carregar = useCallback(() => api.obterSolicitacao(id), [id]);
   const { dados: s, carregando, atualizando, erro, recarregar, puxarParaAtualizar } = useRecurso(carregar);
   const [assumindo, setAssumindo] = useState(false);
+  const { sessao } = useAuth();
 
   if (carregando) return <Carregando />;
   if (erro?.status === 403) {
@@ -52,6 +54,19 @@ export default function DetalheOsm({ route, navigation }) {
       <View style={styles.acoes}>
         {podeAssumir(s) ? (
           <Botao texto="Assumir máquina" onPress={confirmarAssumir} carregando={assumindo} />
+        ) : null}
+        {ehMinhaOsmAberta(s, sessao.matricula) ? (
+          <>
+            <Botao
+              texto="Concluir manutenção"
+              onPress={() => navigation.navigate('EncerrarOsm', { id: s.id, numero: s.numero, tipo: 'concluir' })}
+            />
+            <Botao
+              texto="Não executada"
+              variante="perigo"
+              onPress={() => navigation.navigate('EncerrarOsm', { id: s.id, numero: s.numero, tipo: 'nao-executar' })}
+            />
+          </>
         ) : null}
       </View>
     </ScrollView>

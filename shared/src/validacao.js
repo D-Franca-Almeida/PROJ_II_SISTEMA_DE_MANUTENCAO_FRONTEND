@@ -57,3 +57,16 @@ export function validarReenvio(original, correcao) {
   }
   return { erros, semAlteracao };
 }
+
+/**
+ * Laudo obrigatório para concluir a OSM (CPTM-72).
+ * @param {string} laudo
+ */
+export function validarLaudo(laudo) {
+  const texto = (laudo ?? '').trim();
+  if (texto.length < LIMITES.DESCRICAO_MIN) {
+    return `Descreva o serviço realizado (mínimo ${LIMITES.DESCRICAO_MIN} caracteres).`;
+  }
+  if (texto.length > LIMITES.DESCRICAO_MAX) return `Máximo de ${LIMITES.DESCRICAO_MAX} caracteres.`;
+  return null;
+}
