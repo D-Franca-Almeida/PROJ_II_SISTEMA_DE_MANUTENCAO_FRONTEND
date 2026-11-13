@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   LIMITES,
@@ -30,7 +30,7 @@ function CampoBloqueado({ rotulo, valor }) {
 export default function CorrigirSolicitacao({ route, navigation }) {
   const { id } = route.params;
   const carregar = useCallback(() => api.obterSolicitacao(id), [id]);
-  const { dados: s, carregando, erro } = useRecurso(carregar);
+  const { dados: s, carregando, erro, recarregar } = useRecurso(carregar);
 
   const [descricao, setDescricao] = useState('');
   const [foto, setFoto] = useState(null);
@@ -38,14 +38,27 @@ export default function CorrigirSolicitacao({ route, navigation }) {
   const [enviando, setEnviando] = useState(false);
   const [erroEnvio, setErroEnvio] = useState(null);
 
-  // preenche uma vez com a descrição atual
+  // preenche só na primeira carga: se a pessoa apagar o texto e a tela recarregar
+  // (ao voltar o foco), o texto original não deve voltar
+  const jaPreencheu = useRef(false);
   useEffect(() => {
-    if (s) setDescricao((atual) => atual || s.descricao);
+    if (!s || jaPreencheu.current) return;
+    jaPreencheu.current = true;
+    setDescricao(s.descricao ?? '');
   }, [s]);
 
   if (carregando) return <Carregando />;
-  if (erro) {
-    return <ErroTela titulo={erro.status === 403 ? 'Acesso negado' : undefined} mensagem={erro.mensagem} />;
+  // erro sem dados: tela de erro inteira. Com dados já carregados, uma recarga que
+  // falhe não pode apagar o que a pessoa digitou (vira um aviso no topo do formulário).
+  if (erro && !s) {
+    const negado = erro.status === 403;
+    return (
+      <ErroTela
+        titulo={negado ? 'Acesso negado' : undefined}
+        mensagem={erro.mensagem}
+        aoTentarDeNovo={negado ? undefined : recarregar}
+      />
+    );
   }
   if (s.status !== STATUS.DEVOLVIDA) {
     return <ErroTela titulo="Nada a corrigir" mensagem="Só solicitações DEVOLVIDAS podem ser corrigidas." />;
@@ -82,6 +95,7 @@ export default function CorrigirSolicitacao({ route, navigation }) {
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.conteudo} keyboardShouldPersistTaps="handled">
+        <AlertaErro mensagem={erro ? `Não foi possível atualizar: ${erro.mensagem}` : null} />
         <MotivoDevolucao motivo={s.motivoDevolucao ?? 'Motivo não informado.'} />
 
         <Text style={styles.titulo} accessibilityRole="header">Corrigir {s.numero}</Text>
