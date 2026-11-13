@@ -1,7 +1,7 @@
 import { STATUS } from '../status.js';
 import { podeTransicionar, exigeMotivo } from '../transicoes.js';
 import { validarNovaSolicitacao, validarLaudo, validarMotivo, MSG_SEM_CORRECAO } from '../validacao.js';
-import { STATUS_PEDIDO, pedidoPendente } from '../pecas.js';
+import { STATUS_PEDIDO, pedidoPendente, validarPedidoPeca } from '../pecas.js';
 import { PERFIL, gerarJwtFalso } from '../perfil.js';
 import {
   calcularDiasParaExpirar,
@@ -59,6 +59,7 @@ export function criarMockServidor({
   let proximoId = solicitacoes.length + 1;
   let proximaOsm = Math.max(0, ...solicitacoes.map((s) => s.ordemServico?.id ?? 0)) + 1;
   const pedidos = criarPedidosIniciais();
+  let proximoPedido = pedidos.length + 1;
 
   const esperar = () => new Promise((resolve) => setTimeout(resolve, atrasoMs));
 
@@ -113,6 +114,13 @@ export function criarMockServidor({
   };
 
   const pedidosDaOsm = (osmId) => pedidos.filter((p) => p.ordemServicoId === osmId);
+
+  /** Rotas /ordens-servico/{osmId}/...: acha a SSL dona da OSM. */
+  const idDaSolicitacaoPorOsm = (osmId) => {
+    const s = solicitacoes.find((x) => x.ordemServico?.id === Number(osmId));
+    if (!s) throw erroHttp(404, `Ordem de serviço ${osmId} não encontrada.`);
+    return s.id;
+  };
 
   /** Mudança de status + linha no histórico. */
   const registrar = (s, status, observacao = null) => {
@@ -324,6 +332,26 @@ export function criarMockServidor({
       s.ordemServico.dataFim = new Date().toISOString();
       registrar(s, STATUS.NAO_EXECUTADA, motivo.trim());
       return { message: 'Manutenção registrada como não executada.' };
+    },
+
+    /** CPTM-38/73: POST /ordens-servico/{osmId}/pecas — só o técnico dono, OSM EM MANUTENCAO. */
+    async pedirPeca(osmId, dados) {
+      await esperar();
+      const s = buscarMinhaOsmAberta(idDaSolicitacaoPorOsm(osmId));
+      const erros = validarPedidoPeca(dados);
+      if (Object.keys(erros).length) throw erroHttp(400, Object.values(erros)[0]);
+
+      const pedido = {
+        id: proximoPedido++,
+        ordemServicoId: s.ordemServico.id,
+        item: dados.item.trim(),
+        quantidade: Number(dados.quantidade),
+        justificativa: dados.justificativa.trim(),
+        status: STATUS_PEDIDO.SOLICITADO,
+        dataPedido: new Date().toISOString(),
+      };
+      pedidos.push(pedido);
+      return copia(pedido); // 201 Created
     },
 
     /** Triagem genérica (web/admin). */
