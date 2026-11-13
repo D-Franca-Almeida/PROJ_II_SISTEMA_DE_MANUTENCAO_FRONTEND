@@ -37,7 +37,10 @@ export function normalizarSolicitacao(dto) {
           motivoNaoExecucao: ou(dto.ordemServico?.motivoNaoExecucao),
         }
       : null,
-    autorizacaoRetirada: ou(dto.autorizacaoRetirada),
+    autorizacaoRetirada: ou(
+      dto.autorizacaoRetirada,
+      dto.nomeAutorizado ? { nome: dto.nomeAutorizado, tipoDocumento: ou(dto.tipoDocumentoAutorizado), documento: ou(dto.documentoAutorizado) } : null,
+    ),
     historico: Array.isArray(dto.historico) ? dto.historico : [],
   };
 }

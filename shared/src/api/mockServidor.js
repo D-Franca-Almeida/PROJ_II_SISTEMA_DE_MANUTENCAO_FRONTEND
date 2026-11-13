@@ -1,6 +1,14 @@
 import { STATUS } from '../status.js';
 import { podeTransicionar, exigeMotivo } from '../transicoes.js';
-import { validarNovaSolicitacao, validarLaudo, validarMotivo, MSG_SEM_CORRECAO } from '../validacao.js';
+import {
+  validarNovaSolicitacao,
+  validarLaudo,
+  validarMotivo,
+  validarAutorizacaoRetirada,
+  somenteDigitos,
+  TIPO_DOCUMENTO,
+  MSG_SEM_CORRECAO,
+} from '../validacao.js';
 import { STATUS_PEDIDO, pedidoPendente, podeCancelarPedido, validarPedidoPeca } from '../pecas.js';
 import { PERFIL, gerarJwtFalso } from '../perfil.js';
 import {
@@ -435,6 +443,23 @@ export function criarMockServidor({
       if (n.matricula !== matricula) throw erroHttp(403, '');
       n.lida = true;
       return { message: 'Notificação marcada como lida.' };
+    },
+
+    /** CPTM-79/80: autorizar terceiro — só o dono, só AGUARDANDO RETIRADA, nome e documento obrigatórios. */
+    async autorizarRetirada(id, dados) {
+      await esperar();
+      const s = buscarDoDono(id);
+      if (s.status !== STATUS.AGUARDANDO_RETIRADA) {
+        throw erroHttp(400, `Só é possível autorizar a retirada de uma solicitação AGUARDANDO RETIRADA (status atual: ${s.status}).`);
+      }
+      const erros = validarAutorizacaoRetirada(dados);
+      if (Object.keys(erros).length) throw erroHttp(400, Object.values(erros)[0]);
+
+      const documento =
+        dados.tipoDocumento === TIPO_DOCUMENTO.CPF ? somenteDigitos(dados.documento) : dados.documento.trim();
+      s.autorizacaoRetirada = { nome: dados.nome.trim(), tipoDocumento: dados.tipoDocumento, documento };
+      registrar(s, STATUS.RETIRADA_AUTORIZADA, `Retirada autorizada para ${s.autorizacaoRetirada.nome}.`);
+      return { message: 'Retirada autorizada.' };
     },
 
     /** Triagem genérica (web/admin). */

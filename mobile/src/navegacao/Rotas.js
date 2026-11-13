@@ -18,6 +18,7 @@ import DetalheOsm from '../telas/DetalheOsm';
 import EncerrarOsm from '../telas/EncerrarOsm';
 import PedirPeca from '../telas/PedirPeca';
 import Notificacoes from '../telas/Notificacoes';
+import AutorizarRetirada from '../telas/AutorizarRetirada';
 
 const Stack = createNativeStackNavigator();
 const Abas = createBottomTabNavigator();
@@ -94,6 +95,11 @@ export default function Rotas() {
               name="CorrigirSolicitacao"
               component={CorrigirSolicitacao}
               options={{ title: 'Corrigir e reenviar' }}
+            />
+            <Stack.Screen
+              name="AutorizarRetirada"
+              component={AutorizarRetirada}
+              options={{ title: 'Autorizar retirada' }}
             />
             <Stack.Screen name="Notificacoes" component={Notificacoes} options={telaNotificacoes} />
           </Stack.Group>

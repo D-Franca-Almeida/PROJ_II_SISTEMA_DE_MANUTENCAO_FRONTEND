@@ -1,5 +1,5 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { STATUS } from '../../../shared/src/index.js';
+import { STATUS, mascararCpf } from '../../../shared/src/index.js';
 import { API_URL } from '../config';
 import { cores, medidas } from '../tema';
 import { formatarDataHora, textoEquipamento, textoLocalidade } from '../formato';
@@ -71,6 +71,21 @@ export default function InfoSolicitacao({ solicitacao: s }) {
           <Linha rotulo="Técnico responsável" valor={s.ordemServico.matriculaTecnico} />
         ) : null}
         {s.ordemServico?.laudo ? <Linha rotulo="Laudo" valor={s.ordemServico.laudo} /> : null}
+        {s.ordemServico?.motivoNaoExecucao ? (
+          <Linha rotulo="Motivo da não execução" valor={s.ordemServico.motivoNaoExecucao} />
+        ) : null}
+        {s.autorizacaoRetirada ? (
+          <Linha
+            rotulo="Autorizado a retirar"
+            valor={`${s.autorizacaoRetirada.nome} (${
+              s.autorizacaoRetirada.tipoDocumento === 'MATRICULA' ? 'matrícula' : 'CPF'
+            } ${
+              s.autorizacaoRetirada.tipoDocumento === 'MATRICULA'
+                ? s.autorizacaoRetirada.documento
+                : mascararCpf(s.autorizacaoRetirada.documento)
+            })`}
+          />
+        ) : null}
       </View>
     </View>
   );

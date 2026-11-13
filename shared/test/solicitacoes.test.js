@@ -10,6 +10,10 @@ import {
   podeCancelar,
   indicadorPrazo,
   normalizarHistorico,
+  cpfValido,
+  mascararCpf,
+  validarAutorizacaoRetirada,
+  TIPO_DOCUMENTO,
 } from '../src/index.js';
 import { mockComSessao } from './apoio.js';
 
@@ -178,4 +182,37 @@ test('CPTM-86: notificações do usuário, marcar como lida e aviso ao dono', as
   const depois = await api.listarNotificacoes();
   assert.equal(depois[0].solicitacaoId, daFila.id);
   assert.equal(depois[0].lida, false);
+});
+
+test('CPTM-80: validação de nome e CPF/matrícula', () => {
+  assert.equal(cpfValido('529.982.247-25'), true);
+  assert.equal(cpfValido('529.982.247-24'), false);
+  assert.equal(cpfValido('111.111.111-11'), false);
+  assert.equal(mascararCpf('52998224725'), '529.982.247-25');
+  assert.equal(mascararCpf('5299'), '529.9');
+
+  const ok = { nome: 'Maria da Silva', tipoDocumento: TIPO_DOCUMENTO.CPF, documento: '529.982.247-25' };
+  assert.deepEqual(validarAutorizacaoRetirada(ok), {});
+  assert.ok(validarAutorizacaoRetirada({ ...ok, nome: '' }).nome);
+  assert.ok(validarAutorizacaoRetirada({ ...ok, documento: '' }).documento);
+  assert.deepEqual(validarAutorizacaoRetirada({ ...ok, tipoDocumento: TIPO_DOCUMENTO.MATRICULA, documento: 'cptm4521' }), {});
+});
+
+test('CPTM-80: autorizar retirada só em AGUARDANDO RETIRADA e só o dono', async () => {
+  const { api, entrarComo } = mockComSessao('comum123', PERFIL.COMUM);
+  const minhas = await api.listarMinhasSolicitacoes();
+  const aguardando = minhas.find((s) => s.status === STATUS.AGUARDANDO_RETIRADA);
+  const outra = minhas.find((s) => s.status === STATUS.SOLICITADA);
+  const dados = { nome: 'Maria da Silva', tipoDocumento: TIPO_DOCUMENTO.CPF, documento: '529.982.247-25' };
+
+  await assert.rejects(api.autorizarRetirada(outra.id, dados), (e) => e.response.status === 400);
+  await assert.rejects(api.autorizarRetirada(aguardando.id, { ...dados, nome: '' }), (e) => e.response.status === 400);
+  entrarComo('outro456', PERFIL.COMUM);
+  await assert.rejects(api.autorizarRetirada(aguardando.id, dados), (e) => e.response.status === 403);
+
+  entrarComo('comum123', PERFIL.COMUM);
+  await api.autorizarRetirada(aguardando.id, dados);
+  const depois = await api.obterSolicitacao(aguardando.id);
+  assert.equal(depois.status, STATUS.RETIRADA_AUTORIZADA);
+  assert.deepEqual(depois.autorizacaoRetirada, { nome: 'Maria da Silva', tipoDocumento: 'CPF', documento: '52998224725' });
 });
