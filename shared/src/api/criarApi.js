@@ -21,6 +21,8 @@ export const ROTAS = Object.freeze({
   // CPTM-71 (em andamento): prefixo a confirmar no controller
   concluir: (id) => `/solicitacoes/${id}/concluir`,
   naoExecutar: (id) => `/solicitacoes/${id}/nao-executar`,
+  // CPTM-38 (a fazer no backend)
+  pecas: (osmId) => `/ordens-servico/${osmId}/pecas`,
   // A CONFIRMAR: rotas das listas do técnico ainda não existem no backend
   minhasManutencoes: '/ordens-servico/minhas',
   equipamentos: '/equipamentos',
@@ -118,6 +120,16 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
     /** CPTM-71/72: PUT /{id}/nao-executar { motivo } -> NAO EXECUTADA (cancela pedidos pendentes) */
     naoExecutarManutencao: (id, motivo) =>
       http.put(ROTAS.naoExecutar(id), { motivo: motivo.trim() }).then(dados),
+
+    /** CPTM-38/73: POST /ordens-servico/{id}/pecas { item, quantidade, justificativa } -> 201 SOLICITADO */
+    pedirPeca: (osmId, { item, quantidade, justificativa }) =>
+      http
+        .post(ROTAS.pecas(osmId), {
+          item: item.trim(),
+          quantidade: Number(quantidade),
+          justificativa: justificativa.trim(),
+        })
+        .then(dados),
 
     alterarStatus: (id, status, motivo = null) =>
       http.put(ROTAS.status(id), { status, motivo }).then(dados),

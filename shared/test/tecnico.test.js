@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { STATUS, STATUS_PEDIDO, PERFIL, mensagemDeErro, pecasPendentesDoErro } from '../src/index.js';
+import {
+  STATUS,
+  STATUS_PEDIDO,
+  PERFIL,
+  mensagemDeErro,
+  pecasPendentesDoErro,
+  validarPedidoPeca,
+} from '../src/index.js';
 import { mockComSessao } from './apoio.js';
 
 test('CPTM-37: técnico assume da fila (RECEBIDA) e o item vai para "Minhas manutenções"', async () => {
@@ -78,4 +85,31 @@ test('CPTM-72: concluir com sucesso quando não há pendência', async () => {
   const depois = await api.obterSolicitacao(recebida.id);
   assert.equal(depois.status, STATUS.CONCLUIDA);
   assert.equal(depois.ordemServico.laudo, 'Capacitor de filtro substituído, sem ruído.');
+});
+
+test('CPTM-73: validação do pedido de peça (quantidade > 0)', () => {
+  const ok = { item: 'Rolamento 6204', quantidade: '2', justificativa: 'Rolamento com folga.' };
+  assert.deepEqual(validarPedidoPeca(ok), {});
+  assert.ok(validarPedidoPeca({ ...ok, quantidade: '0' }).quantidade);
+  assert.ok(validarPedidoPeca({ ...ok, quantidade: '-1' }).quantidade);
+  assert.ok(validarPedidoPeca({ ...ok, quantidade: '1.5' }).quantidade);
+  assert.ok(validarPedidoPeca({ ...ok, item: ' ' }).item);
+  assert.ok(validarPedidoPeca({ ...ok, justificativa: '' }).justificativa);
+});
+
+test('CPTM-73: pedido criado como SOLICITADO; só o técnico dono com OSM aberta', async () => {
+  const { api, entrarComo } = mockComSessao('tec123', PERFIL.TECNICO);
+  const minhas = await api.listarMinhasManutencoes();
+  const aberta = minhas.find((s) => s.status === STATUS.MANUTENCAO);
+  const encerrada = minhas.find((s) => s.status !== STATUS.MANUTENCAO);
+  const dados = { item: 'Capacitor 25uF', quantidade: '1', justificativa: 'Capacitor estufado.' };
+
+  const pedido = await api.pedirPeca(aberta.ordemServico.id, dados);
+  assert.equal(pedido.status, STATUS_PEDIDO.SOLICITADO);
+  assert.equal(pedido.quantidade, 1);
+
+  await assert.rejects(api.pedirPeca(aberta.ordemServico.id, { ...dados, quantidade: '0' }), (e) => e.response.status === 400);
+  await assert.rejects(api.pedirPeca(encerrada.ordemServico.id, dados), (e) => e.response.status === 400);
+  entrarComo('tec456', PERFIL.TECNICO);
+  await assert.rejects(api.pedirPeca(aberta.ordemServico.id, dados), (e) => e.response.status === 403);
 });

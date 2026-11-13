@@ -44,3 +44,33 @@ export function pecasPendentesDoErro(erro) {
   const lista = corpo?.pecasPendentes ?? corpo?.pendentes;
   return Array.isArray(lista) ? lista : [];
 }
+
+export const LIMITES_PEDIDO = Object.freeze({ ITEM_MAX: 120, JUSTIFICATIVA_MIN: 5, JUSTIFICATIVA_MAX: 500, QUANTIDADE_MAX: 999 });
+
+/**
+ * Formulário de pedido de peça (CPTM-73). Quantidade chega como texto do input.
+ * @param {{ item: string, quantidade: string | number, justificativa: string }} dados
+ * @returns {Record<string, string>} erros por campo (vazio = válido)
+ */
+export function validarPedidoPeca(dados) {
+  const erros = {};
+  const item = (dados.item ?? '').trim();
+  if (!item) erros.item = 'Informe a peça ou item.';
+  else if (item.length > LIMITES_PEDIDO.ITEM_MAX) erros.item = `Máximo de ${LIMITES_PEDIDO.ITEM_MAX} caracteres.`;
+
+  const texto = String(dados.quantidade ?? '').trim();
+  const qtd = Number(texto);
+  if (!texto || !/^\d+$/.test(texto) || !Number.isInteger(qtd) || qtd <= 0) {
+    erros.quantidade = 'A quantidade deve ser um número inteiro maior que zero.';
+  } else if (qtd > LIMITES_PEDIDO.QUANTIDADE_MAX) {
+    erros.quantidade = `Máximo de ${LIMITES_PEDIDO.QUANTIDADE_MAX} unidades por pedido.`;
+  }
+
+  const just = (dados.justificativa ?? '').trim();
+  if (just.length < LIMITES_PEDIDO.JUSTIFICATIVA_MIN) {
+    erros.justificativa = `Explique por que a peça é necessária (mínimo ${LIMITES_PEDIDO.JUSTIFICATIVA_MIN} caracteres).`;
+  } else if (just.length > LIMITES_PEDIDO.JUSTIFICATIVA_MAX) {
+    erros.justificativa = `Máximo de ${LIMITES_PEDIDO.JUSTIFICATIVA_MAX} caracteres.`;
+  }
+  return erros;
+}

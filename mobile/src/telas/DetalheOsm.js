@@ -58,6 +58,13 @@ export default function DetalheOsm({ route, navigation }) {
         {ehMinhaOsmAberta(s, sessao.matricula) ? (
           <>
             <Botao
+              texto="Pedir peça"
+              variante="secundario"
+              onPress={() =>
+                navigation.navigate('PedirPeca', { osmId: s.ordemServico.id, numero: s.numero })
+              }
+            />
+            <Botao
               texto="Concluir manutenção"
               onPress={() => navigation.navigate('EncerrarOsm', { id: s.id, numero: s.numero, tipo: 'concluir' })}
             />
