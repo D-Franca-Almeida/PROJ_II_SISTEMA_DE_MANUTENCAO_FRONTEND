@@ -28,7 +28,7 @@ const FORM_VAZIO = {
 };
 
 /** CPTM-30 — Usuário Comum abre uma SSL com foto pelo celular. */
-export default function NovaSolicitacao() {
+export default function NovaSolicitacao({ navigation }) {
   const [catalogos, setCatalogos] = useState({ equipamentos: [], avarias: [], localidades: [] });
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState(null);
@@ -76,6 +76,7 @@ export default function NovaSolicitacao() {
         'Solicitação enviada',
         `A ${criada.numero ?? 'solicitação'} foi aberta e está aguardando a triagem.`,
       );
+      navigation?.navigate('MinhasSolicitacoes');
     } catch (e) {
       setErroEnvio(mensagemDeErro(e));
     } finally {
