@@ -8,6 +8,7 @@ import {
   podeVerSolicitacao,
   podeCancelar,
   podeAssumir,
+  podeVerHistorico,
   ehMinhaOsmAberta,
   STATUS_FILA_TECNICO,
 } from '../regras.js';
@@ -391,6 +392,14 @@ export function criarMockServidor({
       if (!proximo) throw erroHttp(400, 'Pedido não pode avançar.');
       pedido.status = proximo;
       return copia(pedido);
+    },
+
+    /** CPTM-87/89: GET /solicitacoes/{id}/historico — dono, Admin e técnico da OSM. */
+    async listarHistorico(id) {
+      await esperar();
+      const s = buscar(id);
+      if (!podeVerHistorico(s, sessao())) throw erroHttp(403, 'Acesso negado ao histórico desta solicitação.');
+      return copia(s.historico).sort((a, b) => a.data.localeCompare(b.data));
     },
 
     /** Triagem genérica (web/admin). */

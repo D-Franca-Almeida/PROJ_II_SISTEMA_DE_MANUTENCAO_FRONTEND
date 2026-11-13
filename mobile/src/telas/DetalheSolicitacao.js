@@ -7,6 +7,7 @@ import { useRecurso } from '../useRecurso';
 import { Carregando, ErroTela } from '../componentes/Estados';
 import InfoSolicitacao from '../componentes/InfoSolicitacao';
 import Botao from '../componentes/Botao';
+import LinhaDoTempo from '../componentes/LinhaDoTempo';
 
 /** CPTM-61 — detalhe da SSL do Usuário Comum, com as ações do solicitante. */
 export default function DetalheSolicitacao({ route, navigation }) {
@@ -78,6 +79,7 @@ export default function DetalheSolicitacao({ route, navigation }) {
           />
         ) : null}
       </View>
+      <LinhaDoTempo solicitacaoId={s.id} />
     </ScrollView>
   );
 }

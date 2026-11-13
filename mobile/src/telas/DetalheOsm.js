@@ -9,6 +9,7 @@ import { Carregando, ErroTela } from '../componentes/Estados';
 import InfoSolicitacao from '../componentes/InfoSolicitacao';
 import Botao from '../componentes/Botao';
 import ListaPedidos from '../componentes/ListaPedidos';
+import LinhaDoTempo from '../componentes/LinhaDoTempo';
 
 /** CPTM-37 — detalhe da SSL para o Técnico: assumir a máquina e (depois) operar a OSM. */
 export default function DetalheOsm({ route, navigation }) {
@@ -80,6 +81,7 @@ export default function DetalheOsm({ route, navigation }) {
       {s.ordemServico?.id && s.ordemServico.matriculaTecnico === sessao.matricula ? (
         <ListaPedidos osmId={s.ordemServico.id} podeAlterar={ehMinhaOsmAberta(s, sessao.matricula)} />
       ) : null}
+      <LinhaDoTempo solicitacaoId={s.id} />
     </ScrollView>
   );
 }
