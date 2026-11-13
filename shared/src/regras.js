@@ -62,3 +62,17 @@ export function indicadorPrazo(s) {
   const texto = n <= 0 ? 'Expira hoje' : n === 1 ? 'Expira em 1 dia' : `Expira em ${n} dias`;
   return { texto, critico: n <= DIAS_PRAZO_CRITICO };
 }
+
+/** CPTM-37 (refinamento 10/11): a fila do técnico é RECEBIDA, não APROVADA. */
+export const STATUS_FILA_TECNICO = STATUS.RECEBIDA;
+
+/** @param {{ status: string }} s */
+export const podeAssumir = (s) => s.status === STATUS_FILA_TECNICO;
+
+/**
+ * A OSM está nas mãos deste técnico e ainda aberta (pode concluir, pedir peças...).
+ * @param {{ status: string, ordemServico?: { matriculaTecnico: string } | null }} s
+ * @param {string} matricula
+ */
+export const ehMinhaOsmAberta = (s, matricula) =>
+  s.status === STATUS.MANUTENCAO && s.ordemServico?.matriculaTecnico === matricula;

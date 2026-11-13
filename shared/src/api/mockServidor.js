@@ -2,7 +2,13 @@ import { STATUS } from '../status.js';
 import { podeTransicionar, exigeMotivo } from '../transicoes.js';
 import { validarNovaSolicitacao, MSG_SEM_CORRECAO } from '../validacao.js';
 import { PERFIL, gerarJwtFalso } from '../perfil.js';
-import { calcularDiasParaExpirar, podeVerSolicitacao, podeCancelar } from '../regras.js';
+import {
+  calcularDiasParaExpirar,
+  podeVerSolicitacao,
+  podeCancelar,
+  podeAssumir,
+  STATUS_FILA_TECNICO,
+} from '../regras.js';
 import {
   EQUIPAMENTOS,
   AVARIAS,
@@ -48,6 +54,7 @@ export function criarMockServidor({
 } = {}) {
   const solicitacoes = criarSolicitacoesIniciais();
   let proximoId = solicitacoes.length + 1;
+  let proximaOsm = Math.max(0, ...solicitacoes.map((s) => s.ordemServico?.id ?? 0)) + 1;
 
   const esperar = () => new Promise((resolve) => setTimeout(resolve, atrasoMs));
 
@@ -211,6 +218,56 @@ export function criarMockServidor({
       }
       registrar(s, STATUS.CANCELADA, 'Cancelada pelo solicitante.');
       return { message: 'Solicitação cancelada.' };
+    },
+
+    /** CPTM-37: fila do técnico (RECEBIDAS), mais antiga primeiro. */
+    async listarFilaTecnico() {
+      await esperar();
+      exigirPerfil(PERFIL.TECNICO);
+      return solicitacoes
+        .filter((s) => s.status === STATUS_FILA_TECNICO)
+        .map(saida)
+        .sort((a, b) => a.dataStatus.localeCompare(b.dataStatus));
+    },
+
+    /** CPTM-37: "Minhas manutenções" — SSLs com OSM do técnico; abertas primeiro. */
+    async listarMinhasManutencoes() {
+      await esperar();
+      const { matricula } = exigirPerfil(PERFIL.TECNICO);
+      const aberta = (s) => (s.status === STATUS.MANUTENCAO ? 0 : 1);
+      return solicitacoes
+        .filter((s) => s.ordemServico?.matriculaTecnico === matricula)
+        .map(saida)
+        .sort((a, b) => aberta(a) - aberta(b) || b.dataStatus.localeCompare(a.dataStatus));
+    },
+
+    /** CPTM-70/36/37: PUT /solicitacoes/{id}/iniciar-manutencao — só Técnico, só RECEBIDA. */
+    async iniciarManutencao(id) {
+      await esperar();
+      const { matricula } = exigirPerfil(PERFIL.TECNICO);
+      const s = buscar(id);
+      if (!podeAssumir(s)) {
+        throw erroHttp(
+          400,
+          `Transição inválida: só é possível iniciar a manutenção de uma solicitação ${STATUS_FILA_TECNICO} (status atual: ${s.status}).`,
+        );
+      }
+      const agora = new Date().toISOString();
+      s.ordemServico = {
+        id: proximaOsm++,
+        matriculaTecnico: matricula,
+        dataInicio: agora,
+        dataFim: null,
+        laudo: null,
+        motivoNaoExecucao: null,
+      };
+      registrar(s, STATUS.MANUTENCAO, 'Manutenção iniciada (OSM aberta).');
+      return {
+        mensagem: 'Manutenção iniciada com sucesso. Ordem de Serviço (OSM) aberta.',
+        solicitacaoId: s.id,
+        tecnicoResponsavel: matricula,
+        novoStatus: STATUS.MANUTENCAO,
+      };
     },
 
     /** Triagem genérica (web/admin). */

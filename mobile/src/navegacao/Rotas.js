@@ -14,6 +14,7 @@ import MinhasSolicitacoes from '../telas/MinhasSolicitacoes';
 import DetalheSolicitacao from '../telas/DetalheSolicitacao';
 import CorrigirSolicitacao from '../telas/CorrigirSolicitacao';
 import HomeTecnico from '../telas/HomeTecnico';
+import DetalheOsm from '../telas/DetalheOsm';
 
 const Stack = createNativeStackNavigator();
 const Abas = createBottomTabNavigator();
@@ -92,6 +93,7 @@ export default function Rotas() {
         ) : sessao.perfil === PERFIL.TECNICO ? (
           <Stack.Group>
             <Stack.Screen name="HomeTecnico" component={HomeTecnico} options={{ title: 'Manutenções' }} />
+            <Stack.Screen name="DetalheOsm" component={DetalheOsm} options={{ title: 'Manutenção' }} />
           </Stack.Group>
         ) : (
           <Stack.Screen name="SemAcesso" options={{ title: 'CPTM SSL' }}>

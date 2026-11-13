@@ -16,6 +16,10 @@ export const ROTAS = Object.freeze({
   status: (id) => `/solicitacoes/${id}/status`,
   reenviar: (id) => `/solicitacoes/${id}/reenviar`,
   cancelar: (id) => `/solicitacoes/${id}/cancelar`,
+  // CPTM-70/36: existe no SolicitacoesController (hoje exige APROVADA; refinamento pede RECEBIDA)
+  iniciarManutencao: (id) => `/solicitacoes/${id}/iniciar-manutencao`,
+  // A CONFIRMAR: rotas das listas do técnico ainda não existem no backend
+  minhasManutencoes: '/ordens-servico/minhas',
   equipamentos: '/equipamentos',
   avarias: '/avarias',
   localidades: '/localidades',
@@ -94,6 +98,16 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
 
     /** CPTM-63: PUT /solicitacoes/{id}/cancelar (já existe no SolicitacoesController) */
     cancelarSolicitacao: (id) => http.put(ROTAS.cancelar(id)).then(dados),
+
+    /** CPTM-37: fila para assumir = SSLs RECEBIDAS. A CONFIRMAR: rota/filtro no backend. */
+    listarFilaTecnico: () =>
+      http.get(ROTAS.solicitacoes, { params: { status: 'RECEBIDA' } }).then(dados).then(normalizarLista),
+
+    /** CPTM-37: SSLs com OSM do técnico logado. A CONFIRMAR: rota no backend. */
+    listarMinhasManutencoes: () => http.get(ROTAS.minhasManutencoes).then(dados).then(normalizarLista),
+
+    /** CPTM-70/36: PUT /solicitacoes/{id}/iniciar-manutencao (só Técnico) -> EM MANUTENCAO + OSM */
+    iniciarManutencao: (id) => http.put(ROTAS.iniciarManutencao(id)).then(dados),
 
     alterarStatus: (id, status, motivo = null) =>
       http.put(ROTAS.status(id), { status, motivo }).then(dados),
