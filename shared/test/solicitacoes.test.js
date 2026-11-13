@@ -8,6 +8,7 @@ import {
   mensagemDeErro,
   validarReenvio,
   podeCancelar,
+  indicadorPrazo,
 } from '../src/index.js';
 import { mockComSessao } from './apoio.js';
 
@@ -121,4 +122,13 @@ test('CPTM-64: cancelar só até APROVADA, só o dono, técnico proibido', async
   entrarComo('comum123', PERFIL.COMUM);
   await api.cancelarSolicitacao(aprovada.id);
   assert.equal((await api.obterSolicitacao(aprovada.id)).status, STATUS.CANCELADA);
+});
+
+test('CPTM-67: indicador de prazo', () => {
+  assert.deepEqual(indicadorPrazo({ status: STATUS.DEVOLVIDA, diasParaExpirar: 7 }), { texto: 'Expira em 7 dias', critico: false });
+  assert.deepEqual(indicadorPrazo({ status: STATUS.APROVADA, diasParaExpirar: 2 }), { texto: 'Expira em 2 dias', critico: true });
+  assert.equal(indicadorPrazo({ status: STATUS.APROVADA, diasParaExpirar: 1 }).texto, 'Expira em 1 dia');
+  assert.equal(indicadorPrazo({ status: STATUS.DEVOLVIDA, diasParaExpirar: 0 }).texto, 'Expira hoje');
+  assert.equal(indicadorPrazo({ status: STATUS.SOLICITADA, diasParaExpirar: 3 }), null);
+  assert.equal(indicadorPrazo({ status: STATUS.APROVADA, diasParaExpirar: null }), null);
 });

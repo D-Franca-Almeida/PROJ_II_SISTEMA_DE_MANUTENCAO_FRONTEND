@@ -26,7 +26,7 @@ export function normalizarSolicitacao(dto) {
     motivoDevolucao: ou(dto.motivoDevolucao),
     matriculaSolicitante: ou(dto.matriculaSolicitante, dto.solicitante),
     dataAbertura: ou(dto.dataAbertura, dto.dataCriacao),
-    diasParaExpirar: ou(dto.diasParaExpirar),
+    diasParaExpirar: ou(dto.diasParaExpirar, dto.DiasParaExpirar),
     ordemServico: tecnico
       ? {
           id: ou(dto.ordemServico?.id, dto.ordemServicoId),

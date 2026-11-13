@@ -5,6 +5,7 @@ import { cores, medidas } from '../tema';
 import { useRecurso } from '../useRecurso';
 import { Carregando, ErroTela } from '../componentes/Estados';
 import CartaoSolicitacao from '../componentes/CartaoSolicitacao';
+import IndicadorPrazo from '../componentes/IndicadorPrazo';
 import Botao from '../componentes/Botao';
 
 /** CPTM-61 — lista das SSLs do Usuário Comum (mais recente primeiro, vem ordenada da API). */
@@ -30,6 +31,7 @@ export default function MinhasSolicitacoes({ navigation }) {
         <CartaoSolicitacao
           solicitacao={item}
           onPress={() => navigation.navigate('DetalheSolicitacao', { id: item.id })}
+          rodape={<IndicadorPrazo solicitacao={item} />}
         />
       )}
       ListEmptyComponent={
