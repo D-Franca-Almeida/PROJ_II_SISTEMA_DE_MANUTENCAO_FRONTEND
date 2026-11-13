@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ehMinhaOsmAberta, mensagemDeErro, podeAssumir } from '../../../shared/src/index.js';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../api';
@@ -59,13 +59,20 @@ export default function DetalheOsm({ route, navigation }) {
         ) : null}
         {ehMinhaOsmAberta(s, sessao.matricula) ? (
           <>
-            <Botao
-              texto="Pedir peça"
-              variante="secundario"
-              onPress={() =>
-                navigation.navigate('PedirPeca', { osmId: s.ordemServico.id, numero: s.numero })
-              }
-            />
+            {/* a API real ainda pode não mandar o id da OSM; sem ele a rota viraria /ordens-servico/null/pecas */}
+            {s.ordemServico?.id ? (
+              <Botao
+                texto="Pedir peça"
+                variante="secundario"
+                onPress={() =>
+                  navigation.navigate('PedirPeca', { osmId: s.ordemServico.id, numero: s.numero })
+                }
+              />
+            ) : (
+              <Text style={styles.indisponivel}>
+                Pedido de peça indisponível: número da OSM não informado pelo servidor.
+              </Text>
+            )}
             <Botao
               texto="Concluir manutenção"
               onPress={() => navigation.navigate('EncerrarOsm', { id: s.id, numero: s.numero, tipo: 'concluir' })}
@@ -89,4 +96,5 @@ export default function DetalheOsm({ route, navigation }) {
 const styles = StyleSheet.create({
   conteudo: { padding: medidas.espaco, paddingBottom: 40 },
   acoes: { marginTop: medidas.espaco, gap: 12 },
+  indisponivel: { fontSize: 14, color: cores.textoSecundario },
 });
