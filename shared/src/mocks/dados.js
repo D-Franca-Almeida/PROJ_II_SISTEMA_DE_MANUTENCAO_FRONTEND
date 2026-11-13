@@ -1,4 +1,5 @@
 import { STATUS } from '../status.js';
+import { STATUS_PEDIDO } from '../pecas.js';
 
 /** Dados fictícios no formato do SSL da CPTM, só para desenvolvimento. */
 
@@ -198,4 +199,20 @@ export function criarSolicitacoesIniciais(agora = Date.now()) {
     },
   ];
   return dados.map((d, i) => solicitacao(i + 1, d, agora));
+}
+
+/** Pedidos de peça da OSM 1 (tec123): um já recebido e um pendente. */
+export function criarPedidosIniciais(agora = Date.now()) {
+  return [
+    {
+      id: 1, ordemServicoId: 1, item: 'Rolamento 6204-2RS', quantidade: 2,
+      justificativa: 'Rolamentos com folga e ruído.', status: STATUS_PEDIDO.RECEBIDO,
+      dataPedido: diasAtras(7, agora),
+    },
+    {
+      id: 2, ordemServicoId: 1, item: 'Escova de carvão 6x10mm', quantidade: 4,
+      justificativa: 'Escovas gastas abaixo do limite.', status: STATUS_PEDIDO.SOLICITADO,
+      dataPedido: diasAtras(2, agora),
+    },
+  ];
 }

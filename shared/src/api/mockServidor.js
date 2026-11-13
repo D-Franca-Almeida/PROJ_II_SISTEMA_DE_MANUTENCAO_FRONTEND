@@ -1,12 +1,14 @@
 import { STATUS } from '../status.js';
 import { podeTransicionar, exigeMotivo } from '../transicoes.js';
-import { validarNovaSolicitacao, MSG_SEM_CORRECAO } from '../validacao.js';
+import { validarNovaSolicitacao, validarLaudo, validarMotivo, MSG_SEM_CORRECAO } from '../validacao.js';
+import { STATUS_PEDIDO, pedidoPendente } from '../pecas.js';
 import { PERFIL, gerarJwtFalso } from '../perfil.js';
 import {
   calcularDiasParaExpirar,
   podeVerSolicitacao,
   podeCancelar,
   podeAssumir,
+  ehMinhaOsmAberta,
   STATUS_FILA_TECNICO,
 } from '../regras.js';
 import {
@@ -14,12 +16,13 @@ import {
   AVARIAS,
   LOCALIDADES,
   criarSolicitacoesIniciais,
+  criarPedidosIniciais,
 } from '../mocks/dados.js';
 
 /** Erro no mesmo formato que o Axios devolve, para as telas tratarem igual. */
-function erroHttp(status, mensagem) {
+function erroHttp(status, mensagem, extra = {}) {
   const erro = new Error(mensagem);
-  erro.response = { status, data: mensagem ? { erro: mensagem } : '' };
+  erro.response = { status, data: mensagem ? { erro: mensagem, ...extra } : '' };
   return erro;
 }
 
@@ -55,6 +58,7 @@ export function criarMockServidor({
   const solicitacoes = criarSolicitacoesIniciais();
   let proximoId = solicitacoes.length + 1;
   let proximaOsm = Math.max(0, ...solicitacoes.map((s) => s.ordemServico?.id ?? 0)) + 1;
+  const pedidos = criarPedidosIniciais();
 
   const esperar = () => new Promise((resolve) => setTimeout(resolve, atrasoMs));
 
@@ -94,6 +98,21 @@ export function criarMockServidor({
     if (s.matriculaSolicitante !== matricula) throw erroHttp(403, '');
     return s;
   };
+
+  /** Operações da OSM: só o técnico dono (outro técnico = 403) e só EM MANUTENCAO (400). */
+  const buscarMinhaOsmAberta = (id) => {
+    const { matricula } = exigirPerfil(PERFIL.TECNICO);
+    const s = buscar(id);
+    if (s.ordemServico?.matriculaTecnico !== matricula) {
+      throw erroHttp(403, 'Esta OSM pertence a outro técnico.');
+    }
+    if (!ehMinhaOsmAberta(s, matricula)) {
+      throw erroHttp(400, `A OSM não está EM MANUTENCAO (status atual: ${s.status}).`);
+    }
+    return s;
+  };
+
+  const pedidosDaOsm = (osmId) => pedidos.filter((p) => p.ordemServicoId === osmId);
 
   /** Mudança de status + linha no histórico. */
   const registrar = (s, status, observacao = null) => {
@@ -268,6 +287,43 @@ export function criarMockServidor({
         tecnicoResponsavel: matricula,
         novoStatus: STATUS.MANUTENCAO,
       };
+    },
+
+    /** CPTM-71/72: PUT /{id}/concluir { laudo } — bloqueia se houver peça pendente. */
+    async concluirManutencao(id, laudo) {
+      await esperar();
+      const s = buscarMinhaOsmAberta(id);
+      const erroLaudo = validarLaudo(laudo);
+      if (erroLaudo) throw erroHttp(400, erroLaudo);
+
+      const pendentes = pedidosDaOsm(s.ordemServico.id).filter((p) => pedidoPendente(p.status));
+      if (pendentes.length) {
+        throw erroHttp(
+          400,
+          'Não é possível concluir: há pedidos de peça pendentes. Aguarde o recebimento ou cancele-os.',
+          { pecasPendentes: copia(pendentes) },
+        );
+      }
+      s.ordemServico.laudo = laudo.trim();
+      s.ordemServico.dataFim = new Date().toISOString();
+      registrar(s, STATUS.CONCLUIDA, laudo.trim());
+      return { message: 'Manutenção concluída.' };
+    },
+
+    /** CPTM-71/72: PUT /{id}/nao-executar { motivo } — cancela os pedidos pendentes (CPTM-76). */
+    async naoExecutarManutencao(id, motivo) {
+      await esperar();
+      const s = buscarMinhaOsmAberta(id);
+      const erroMotivo = validarMotivo(motivo);
+      if (erroMotivo) throw erroHttp(400, erroMotivo);
+
+      for (const p of pedidosDaOsm(s.ordemServico.id)) {
+        if (pedidoPendente(p.status)) p.status = STATUS_PEDIDO.CANCELADO;
+      }
+      s.ordemServico.motivoNaoExecucao = motivo.trim();
+      s.ordemServico.dataFim = new Date().toISOString();
+      registrar(s, STATUS.NAO_EXECUTADA, motivo.trim());
+      return { message: 'Manutenção registrada como não executada.' };
     },
 
     /** Triagem genérica (web/admin). */

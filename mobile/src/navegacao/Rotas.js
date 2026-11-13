@@ -15,6 +15,7 @@ import DetalheSolicitacao from '../telas/DetalheSolicitacao';
 import CorrigirSolicitacao from '../telas/CorrigirSolicitacao';
 import HomeTecnico from '../telas/HomeTecnico';
 import DetalheOsm from '../telas/DetalheOsm';
+import EncerrarOsm from '../telas/EncerrarOsm';
 
 const Stack = createNativeStackNavigator();
 const Abas = createBottomTabNavigator();
@@ -94,6 +95,7 @@ export default function Rotas() {
           <Stack.Group>
             <Stack.Screen name="HomeTecnico" component={HomeTecnico} options={{ title: 'Manutenções' }} />
             <Stack.Screen name="DetalheOsm" component={DetalheOsm} options={{ title: 'Manutenção' }} />
+            <Stack.Screen name="EncerrarOsm" component={EncerrarOsm} options={{ title: 'Encerrar OSM' }} />
           </Stack.Group>
         ) : (
           <Stack.Screen name="SemAcesso" options={{ title: 'CPTM SSL' }}>
