@@ -113,3 +113,35 @@ test('CPTM-73: pedido criado como SOLICITADO; só o técnico dono com OSM aberta
   entrarComo('tec456', PERFIL.TECNICO);
   await assert.rejects(api.pedirPeca(aberta.ordemServico.id, dados), (e) => e.response.status === 403);
 });
+
+test('CPTM-76: ciclo SOLICITADO -> ENCAMINHADO -> RECEBIDO e cancelamento só nos pendentes', async () => {
+  const { api, entrarComo } = mockComSessao('tec123', PERFIL.TECNICO);
+  const osm = (await api.listarMinhasManutencoes()).find((s) => s.status === STATUS.MANUTENCAO);
+  const osmId = osm.ordemServico.id;
+
+  const pedidos = await api.listarPedidosPeca(osmId);
+  assert.ok(pedidos.length >= 2);
+  const recebido = pedidos.find((p) => p.status === STATUS_PEDIDO.RECEBIDO);
+  await assert.rejects(api.cancelarPedidoPeca(osmId, recebido.id), (e) => e.response.status === 400);
+
+  const novo = await api.pedirPeca(osmId, { item: 'Fusível 2A', quantidade: '3', justificativa: 'Reposição.' });
+  assert.equal((await api._avancarPedidoPeca(novo.id)).status, STATUS_PEDIDO.ENCAMINHADO);
+  const cancelado = await api.cancelarPedidoPeca(osmId, novo.id);
+  assert.equal(cancelado.status, STATUS_PEDIDO.CANCELADO);
+
+  entrarComo('tec456', PERFIL.TECNICO);
+  await assert.rejects(api.listarPedidosPeca(osmId), (e) => e.response.status === 403);
+});
+
+test('CPTM-76: cancelar o pendente libera a conclusão da OSM', async () => {
+  const { api } = mockComSessao('tec123', PERFIL.TECNICO);
+  const osm = (await api.listarMinhasManutencoes()).find((s) => s.status === STATUS.MANUTENCAO);
+  const osmId = osm.ordemServico.id;
+  for (const p of await api.listarPedidosPeca(osmId)) {
+    if (p.status === STATUS_PEDIDO.SOLICITADO || p.status === STATUS_PEDIDO.ENCAMINHADO) {
+      await api.cancelarPedidoPeca(osmId, p.id);
+    }
+  }
+  await api.concluirManutencao(osm.id, 'Escovas reaproveitadas após limpeza.');
+  assert.equal((await api.obterSolicitacao(osm.id)).status, STATUS.CONCLUIDA);
+});

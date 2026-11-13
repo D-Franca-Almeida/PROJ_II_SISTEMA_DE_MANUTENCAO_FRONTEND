@@ -1,7 +1,7 @@
 import { STATUS } from '../status.js';
 import { podeTransicionar, exigeMotivo } from '../transicoes.js';
 import { validarNovaSolicitacao, validarLaudo, validarMotivo, MSG_SEM_CORRECAO } from '../validacao.js';
-import { STATUS_PEDIDO, pedidoPendente, validarPedidoPeca } from '../pecas.js';
+import { STATUS_PEDIDO, pedidoPendente, podeCancelarPedido, validarPedidoPeca } from '../pecas.js';
 import { PERFIL, gerarJwtFalso } from '../perfil.js';
 import {
   calcularDiasParaExpirar,
@@ -352,6 +352,45 @@ export function criarMockServidor({
       };
       pedidos.push(pedido);
       return copia(pedido); // 201 Created
+    },
+
+    /** CPTM-74/76: GET /ordens-servico/{osmId}/pecas — técnico dono (ou Admin), mais recente primeiro. */
+    async listarPedidosPeca(osmId) {
+      await esperar();
+      const atual = exigirPerfil(PERFIL.TECNICO, PERFIL.ADMINISTRATIVO);
+      const s = buscar(idDaSolicitacaoPorOsm(osmId));
+      if (atual.perfil === PERFIL.TECNICO && s.ordemServico.matriculaTecnico !== atual.matricula) {
+        throw erroHttp(403, 'Esta OSM pertence a outro técnico.');
+      }
+      return copia(pedidosDaOsm(s.ordemServico.id)).sort((a, b) => b.dataPedido.localeCompare(a.dataPedido));
+    },
+
+    /** CPTM-74/76: cancelar pedido — só o técnico dono, só SOLICITADO ou ENCAMINHADO. */
+    async cancelarPedidoPeca(osmId, pedidoId) {
+      await esperar();
+      const s = buscarMinhaOsmAberta(idDaSolicitacaoPorOsm(osmId));
+      const pedido = pedidosDaOsm(s.ordemServico.id).find((p) => p.id === Number(pedidoId));
+      if (!pedido) throw erroHttp(404, `Pedido ${pedidoId} não encontrado.`);
+      if (!podeCancelarPedido(pedido.status)) {
+        throw erroHttp(400, `Só é possível cancelar pedidos SOLICITADO ou ENCAMINHADO (status atual: ${pedido.status}).`);
+      }
+      pedido.status = STATUS_PEDIDO.CANCELADO;
+      return copia(pedido);
+    },
+
+    /**
+     * Só para testes/demonstração: avança o pedido como faria o Administrativo no web
+     * (SOLICITADO -> ENCAMINHADO -> RECEBIDO).
+     */
+    async _avancarPedidoPeca(pedidoId) {
+      const pedido = pedidos.find((p) => p.id === Number(pedidoId));
+      const proximo = {
+        [STATUS_PEDIDO.SOLICITADO]: STATUS_PEDIDO.ENCAMINHADO,
+        [STATUS_PEDIDO.ENCAMINHADO]: STATUS_PEDIDO.RECEBIDO,
+      }[pedido?.status];
+      if (!proximo) throw erroHttp(400, 'Pedido não pode avançar.');
+      pedido.status = proximo;
+      return copia(pedido);
     },
 
     /** Triagem genérica (web/admin). */
