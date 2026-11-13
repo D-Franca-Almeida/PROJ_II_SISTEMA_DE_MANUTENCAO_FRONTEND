@@ -44,7 +44,7 @@
  * @property {string} dataAbertura ISO 8601
  * @property {number | null} diasParaExpirar  só em DEVOLVIDA/APROVADA (vem da API)
  * @property {OrdemServico | null} ordemServico
- * @property {{ nome: string, documento: string } | null} autorizacaoRetirada
+ * @property {{ nome: string, tipoDocumento: 'CPF' | 'MATRICULA', documento: string } | null} autorizacaoRetirada
  * @property {Historico[]} historico
  *
  * @typedef {Object} Notificacao  CPTM-86 (só in-app)

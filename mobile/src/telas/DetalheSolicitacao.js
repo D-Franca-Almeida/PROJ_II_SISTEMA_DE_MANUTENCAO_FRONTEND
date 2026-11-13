@@ -70,6 +70,13 @@ export default function DetalheSolicitacao({ route, navigation }) {
             onPress={() => navigation.navigate('CorrigirSolicitacao', { id: s.id })}
           />
         ) : null}
+        {s.status === STATUS.AGUARDANDO_RETIRADA ? (
+          <Botao
+            texto="Autorizar terceiro a retirar"
+            variante="secundario"
+            onPress={() => navigation.navigate('AutorizarRetirada', { id: s.id, numero: s.numero })}
+          />
+        ) : null}
         {podeCancelar(s.status) ? (
           <Botao
             texto="Cancelar solicitação"

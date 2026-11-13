@@ -23,6 +23,8 @@ export const ROTAS = Object.freeze({
   cancelar: (id) => `/solicitacoes/${id}/cancelar`,
   // CPTM-87 (a fazer no backend)
   historico: (id) => `/solicitacoes/${id}/historico`,
+  // CPTM-79 (a fazer no backend)
+  autorizarRetirada: (id) => `/solicitacoes/${id}/autorizar-retirada`,
   // CPTM-70/36: existe no SolicitacoesController (hoje exige APROVADA; refinamento pede RECEBIDA)
   iniciarManutencao: (id) => `/solicitacoes/${id}/iniciar-manutencao`,
   // CPTM-71 (em andamento): prefixo a confirmar no controller
@@ -165,6 +167,19 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
 
     /** CPTM-84/86: PUT /notificacoes/{id}/lida */
     marcarNotificacaoLida: (id) => http.put(ROTAS.notificacaoLida(id)).then(dados),
+
+    /**
+     * CPTM-79/80: PUT /solicitacoes/{id}/autorizar-retirada -> RETIRADA AUTORIZADA.
+     * A CONFIRMAR o DTO: { nome, tipoDocumento: 'CPF' | 'MATRICULA', documento } (CPF só dígitos).
+     */
+    autorizarRetirada: (id, { nome, tipoDocumento, documento }) =>
+      http
+        .put(ROTAS.autorizarRetirada(id), {
+          nome: nome.trim(),
+          tipoDocumento,
+          documento: tipoDocumento === 'CPF' ? documento.replace(/\D/g, '') : documento.trim(),
+        })
+        .then(dados),
 
     alterarStatus: (id, status, motivo = null) =>
       http.put(ROTAS.status(id), { status, motivo }).then(dados),
