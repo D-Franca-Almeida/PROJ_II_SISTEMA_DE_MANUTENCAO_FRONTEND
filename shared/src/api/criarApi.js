@@ -15,6 +15,7 @@ export const ROTAS = Object.freeze({
   solicitacao: (id) => `/solicitacoes/${id}`,
   status: (id) => `/solicitacoes/${id}/status`,
   reenviar: (id) => `/solicitacoes/${id}/reenviar`,
+  cancelar: (id) => `/solicitacoes/${id}/cancelar`,
   equipamentos: '/equipamentos',
   avarias: '/avarias',
   localidades: '/localidades',
@@ -90,6 +91,9 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
         .then(dados),
+
+    /** CPTM-63: PUT /solicitacoes/{id}/cancelar (já existe no SolicitacoesController) */
+    cancelarSolicitacao: (id) => http.put(ROTAS.cancelar(id)).then(dados),
 
     alterarStatus: (id, status, motivo = null) =>
       http.put(ROTAS.status(id), { status, motivo }).then(dados),

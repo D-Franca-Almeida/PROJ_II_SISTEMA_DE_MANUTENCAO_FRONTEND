@@ -35,3 +35,14 @@ export function podeVerSolicitacao(s, sessao) {
   }
   return false;
 }
+
+/** CPTM-64: o solicitante pode cancelar até a entrega física (RECEBIDA em diante = 400). */
+export const STATUS_CANCELAVEIS = Object.freeze([
+  STATUS.SOLICITADA,
+  STATUS.DEVOLVIDA,
+  STATUS.REENVIADA,
+  STATUS.APROVADA,
+]);
+
+/** @param {string} status */
+export const podeCancelar = (status) => STATUS_CANCELAVEIS.includes(status);

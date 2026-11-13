@@ -2,7 +2,7 @@ import { STATUS } from '../status.js';
 import { podeTransicionar, exigeMotivo } from '../transicoes.js';
 import { validarNovaSolicitacao, MSG_SEM_CORRECAO } from '../validacao.js';
 import { PERFIL, gerarJwtFalso } from '../perfil.js';
-import { calcularDiasParaExpirar, podeVerSolicitacao } from '../regras.js';
+import { calcularDiasParaExpirar, podeVerSolicitacao, podeCancelar } from '../regras.js';
 import {
   EQUIPAMENTOS,
   AVARIAS,
@@ -195,6 +195,22 @@ export function criarMockServidor({
       if (foto) s.fotoUrl = foto.uri ?? s.fotoUrl;
       registrar(s, STATUS.REENVIADA, 'Corrigida pelo solicitante.');
       return { message: 'Solicitação reenviada para a triagem.' };
+    },
+
+    /**
+     * CPTM-63/64: PUT /solicitacoes/{id}/cancelar — Comum só a própria (403),
+     * Técnico proibido (403), RECEBIDA ou posterior = 400.
+     */
+    async cancelarSolicitacao(id) {
+      await esperar();
+      const { matricula, perfil } = exigirPerfil(PERFIL.COMUM, PERFIL.ADMINISTRATIVO);
+      const s = buscar(id);
+      if (perfil === PERFIL.COMUM && s.matriculaSolicitante !== matricula) throw erroHttp(403, '');
+      if (!podeCancelar(s.status)) {
+        throw erroHttp(400, `Não é possível cancelar uma solicitação com status ${s.status}.`);
+      }
+      registrar(s, STATUS.CANCELADA, 'Cancelada pelo solicitante.');
+      return { message: 'Solicitação cancelada.' };
     },
 
     /** Triagem genérica (web/admin). */

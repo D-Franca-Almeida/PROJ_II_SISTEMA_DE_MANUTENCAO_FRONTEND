@@ -7,6 +7,7 @@ import {
   calcularDiasParaExpirar,
   mensagemDeErro,
   validarReenvio,
+  podeCancelar,
 } from '../src/index.js';
 import { mockComSessao } from './apoio.js';
 
@@ -99,4 +100,25 @@ test('CPTM-35: validarReenvio detecta "sem alteração"', () => {
   assert.equal(validarReenvio(original, { descricao: original.descricao + ' Fusível ok.', foto: null }).semAlteracao, false);
   assert.equal(validarReenvio(original, { descricao: original.descricao, foto: { uri: 'x' } }).semAlteracao, false);
   assert.ok(validarReenvio(original, { descricao: 'curta', foto: null }).erros.descricao);
+});
+
+test('CPTM-64: cancelar só até APROVADA, só o dono, técnico proibido', async () => {
+  const { api, entrarComo } = mockComSessao('comum123', PERFIL.COMUM);
+  const minhas = await api.listarMinhasSolicitacoes();
+  const aprovada = minhas.find((s) => s.status === STATUS.APROVADA);
+  const recebida = minhas.find((s) => s.status === STATUS.RECEBIDA);
+
+  assert.equal(podeCancelar(STATUS.APROVADA), true);
+  assert.equal(podeCancelar(STATUS.RECEBIDA), false);
+
+  await assert.rejects(api.cancelarSolicitacao(recebida.id), (e) => e.response.status === 400);
+
+  entrarComo('outro456', PERFIL.COMUM);
+  await assert.rejects(api.cancelarSolicitacao(aprovada.id), (e) => e.response.status === 403);
+  entrarComo('tec123', PERFIL.TECNICO);
+  await assert.rejects(api.cancelarSolicitacao(aprovada.id), (e) => e.response.status === 403);
+
+  entrarComo('comum123', PERFIL.COMUM);
+  await api.cancelarSolicitacao(aprovada.id);
+  assert.equal((await api.obterSolicitacao(aprovada.id)).status, STATUS.CANCELADA);
 });
