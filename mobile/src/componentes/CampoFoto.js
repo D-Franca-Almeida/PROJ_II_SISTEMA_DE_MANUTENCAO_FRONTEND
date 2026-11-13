@@ -10,9 +10,18 @@ import { cores, medidas } from '../tema';
  *   aoMudar: (foto: { uri: string, name: string, type: string } | null) => void,
  *   erro?: string,
  *   desabilitado?: boolean,
+ *   rotulo?: string,
+ *   textoBotao?: string,
  * }} props
  */
-export default function CampoFoto({ foto, aoMudar, erro, desabilitado = false }) {
+export default function CampoFoto({
+  foto,
+  aoMudar,
+  erro,
+  desabilitado = false,
+  rotulo = 'Foto do equipamento',
+  textoBotao = 'Tirar foto',
+}) {
   const [permissaoNegada, setPermissaoNegada] = useState(false);
   const [podePedirDeNovo, setPodePedirDeNovo] = useState(true);
   const [falha, setFalha] = useState(null);
@@ -50,7 +59,7 @@ export default function CampoFoto({ foto, aoMudar, erro, desabilitado = false })
 
   return (
     <View style={styles.campo}>
-      <Text style={styles.rotulo}>Foto do equipamento</Text>
+      <Text style={styles.rotulo}>{rotulo}</Text>
 
       {foto ? (
         <View>
@@ -79,7 +88,7 @@ export default function CampoFoto({ foto, aoMudar, erro, desabilitado = false })
           ]}
         >
           <Text style={styles.icone} importantForAccessibility="no">📷</Text>
-          <Text style={styles.textoArea}>Tirar foto</Text>
+          <Text style={styles.textoArea}>{textoBotao}</Text>
           <Text style={styles.dica}>Mostre a avaria e a etiqueta do equipamento</Text>
         </Pressable>
       )}

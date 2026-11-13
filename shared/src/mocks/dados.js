@@ -1,4 +1,5 @@
 import { STATUS } from '../status.js';
+import { STATUS_PEDIDO } from '../pecas.js';
 
 /** Dados fictícios no formato do SSL da CPTM, só para desenvolvimento. */
 
@@ -29,82 +30,203 @@ export const LOCALIDADES = [
   { id: 5, sigla: 'PAT-BFU', nome: 'Pátio Barra Funda' },
 ];
 
+const DIA = 86_400_000;
 const porId = (lista, id) => lista.find((item) => item.id === id);
+const diasAtras = (dias, agora) => new Date(agora - dias * DIA).toISOString();
 
-function solicitacao(id, { equip, avaria, local, descricao, solicitante, dias, historico }) {
-  const abertura = new Date(Date.now() - dias * 86_400_000).toISOString();
+/**
+ * @param {number} id
+ * @param {{
+ *   equip: number, avaria: number, local: number, descricao: string, dono: string,
+ *   passos: { status: string, dias: number, usuario?: string, observacao?: string }[],
+ *   tecnico?: string, osmId?: number, laudo?: string,
+ * }} d
+ * @param {number} agora
+ */
+function solicitacao(id, d, agora) {
+  const historico = d.passos.map((p) => ({
+    status: p.status,
+    data: diasAtras(p.dias, agora),
+    usuario: p.usuario ?? d.dono,
+    observacao: p.observacao ?? null,
+  }));
+  const ultimo = historico[historico.length - 1];
+  const devolucao = [...historico].reverse().find((h) => h.status === STATUS.DEVOLVIDA);
+  const inicioOsm = historico.find((h) => h.status === STATUS.MANUTENCAO);
+  const fimOsm = historico.find((h) => h.status === STATUS.CONCLUIDA);
+
   return {
     id,
     numero: `SSL-2026-${String(id).padStart(5, '0')}`,
-    equipamento: porId(EQUIPAMENTOS, equip),
-    avaria: porId(AVARIAS, avaria),
-    localidade: porId(LOCALIDADES, local),
-    descricao,
+    equipamento: porId(EQUIPAMENTOS, d.equip),
+    avaria: porId(AVARIAS, d.avaria),
+    localidade: porId(LOCALIDADES, d.local),
+    descricao: d.descricao,
     fotoUrl: null,
-    status: historico[historico.length - 1].status,
-    solicitante,
-    dataAbertura: abertura,
-    historico: historico.map((h, i) => ({
-      usuario: solicitante,
-      motivo: null,
-      ...h,
-      data: new Date(Date.parse(abertura) + i * 3_600_000).toISOString(),
-    })),
+    status: ultimo.status,
+    motivoDevolucao: ultimo.status === STATUS.DEVOLVIDA ? devolucao.observacao : null,
+    matriculaSolicitante: d.dono,
+    dataAbertura: historico[0].data,
+    dataStatus: ultimo.data,
+    ordemServico: d.tecnico
+      ? {
+          id: d.osmId,
+          matriculaTecnico: d.tecnico,
+          dataInicio: inicioOsm?.data ?? null,
+          dataFim: fimOsm?.data ?? null,
+          laudo: d.laudo ?? null,
+          motivoNaoExecucao: null,
+        }
+      : null,
+    autorizacaoRetirada: null,
+    historico,
   };
 }
 
-export function criarSolicitacoesIniciais() {
-  return [
-    solicitacao(1, {
-      equip: 1, avaria: 2, local: 3, dias: 1, solicitante: 'carlos.souza',
+const S = STATUS;
+const ADM = 'admin123';
+
+/** Massa inicial. Dono padrão: comum123 (mesmo usuário Comum do mock da API). */
+export function criarSolicitacoesIniciais(agora = Date.now()) {
+  const dados = [
+    {
+      equip: 1, avaria: 2, local: 3, dono: 'comum123',
       descricao: 'Motor do exaustor esquentando após 20 minutos de uso.',
-      historico: [{ status: STATUS.SOLICITADA }],
-    }),
-    solicitacao(2, {
-      equip: 3, avaria: 1, local: 1, dias: 2, solicitante: 'mariana.lima',
+      passos: [{ status: S.SOLICITADA, dias: 1 }],
+    },
+    {
+      equip: 3, avaria: 1, local: 1, dono: 'comum123',
       descricao: 'Inversor não energiza; display apagado.',
-      historico: [{ status: STATUS.SOLICITADA }],
-    }),
-    solicitacao(3, {
-      equip: 2, avaria: 4, local: 2, dias: 4, solicitante: 'joao.pereira',
-      descricao: 'Vazamento de óleo na base do compressor.',
-      historico: [
-        { status: STATUS.SOLICITADA },
-        { status: STATUS.DEVOLVIDA, usuario: 'eber.adm', motivo: 'Foto não mostra o vazamento.' },
-        { status: STATUS.REENVIADA },
+      passos: [
+        { status: S.SOLICITADA, dias: 9 },
+        { status: S.DEVOLVIDA, dias: 8, usuario: ADM, observacao: 'A foto não mostra a etiqueta do equipamento. Fotografe a plaqueta com o código.' },
       ],
-    }),
-    solicitacao(4, {
-      equip: 4, avaria: 5, local: 1, dias: 6, solicitante: 'carlos.souza',
+    },
+    {
+      equip: 2, avaria: 3, local: 2, dono: 'comum123',
+      descricao: 'Compressor fazendo barulho.',
+      passos: [
+        { status: S.SOLICITADA, dias: 4 },
+        { status: S.DEVOLVIDA, dias: 3, usuario: ADM, observacao: 'Descreva em que situação o ruído aparece (partida, carga, desligamento).' },
+      ],
+    },
+    {
+      equip: 4, avaria: 5, local: 1, dono: 'comum123',
       descricao: 'Multímetro marcando 10% acima na escala de tensão.',
-      historico: [
-        { status: STATUS.SOLICITADA },
-        { status: STATUS.APROVADA, usuario: 'eber.adm' },
+      passos: [
+        { status: S.SOLICITADA, dias: 6 },
+        { status: S.APROVADA, dias: 5, usuario: ADM },
       ],
-    }),
-    solicitacao(5, {
-      equip: 5, avaria: 3, local: 4, dias: 9, solicitante: 'ana.rocha',
+    },
+    {
+      equip: 2, avaria: 4, local: 2, dono: 'comum123',
+      descricao: 'Vazamento de óleo na base do compressor, visível após 1 hora ligado.',
+      passos: [
+        { status: S.SOLICITADA, dias: 5 },
+        { status: S.DEVOLVIDA, dias: 4, usuario: ADM, observacao: 'Foto não mostra o vazamento.' },
+        { status: S.REENVIADA, dias: 3 },
+      ],
+    },
+    {
+      equip: 5, avaria: 3, local: 4, dono: 'comum123',
       descricao: 'Ruído de chiado na fonte ao ligar carga.',
-      historico: [
-        { status: STATUS.SOLICITADA },
-        { status: STATUS.APROVADA, usuario: 'eber.adm' },
-        { status: STATUS.RECEBIDA, usuario: 'eber.adm' },
-        { status: STATUS.SSM_GERADA, usuario: 'eber.adm' },
-        { status: STATUS.MANUTENCAO, usuario: 'tecnico.rafael' },
+      passos: [
+        { status: S.SOLICITADA, dias: 10 },
+        { status: S.APROVADA, dias: 9, usuario: ADM },
+        { status: S.RECEBIDA, dias: 2, usuario: ADM, observacao: 'Recebido no Laboratório Eletrônico.' },
       ],
-    }),
-    solicitacao(6, {
-      equip: 6, avaria: 6, local: 5, dias: 15, solicitante: 'mariana.lima',
+    },
+    {
+      equip: 6, avaria: 6, local: 5, dono: 'outro456',
       descricao: 'Tampa frontal quebrada e conector solto.',
-      historico: [
-        { status: STATUS.SOLICITADA },
-        { status: STATUS.APROVADA, usuario: 'eber.adm' },
-        { status: STATUS.RECEBIDA, usuario: 'eber.adm' },
-        { status: STATUS.SSM_GERADA, usuario: 'eber.adm' },
-        { status: STATUS.MANUTENCAO, usuario: 'tecnico.rafael' },
-        { status: STATUS.CONCLUIDA, usuario: 'tecnico.rafael' },
-        { status: STATUS.AGUARDANDO_RETIRADA, usuario: 'eber.adm' },
+      passos: [
+        { status: S.SOLICITADA, dias: 7 },
+        { status: S.APROVADA, dias: 6, usuario: ADM },
+        { status: S.RECEBIDA, dias: 1, usuario: ADM },
       ],
-    }),
+    },
+    {
+      equip: 1, avaria: 3, local: 3, dono: 'comum123', tecnico: 'tec123', osmId: 1,
+      descricao: 'Motor com vibração forte e ruído no rolamento.',
+      passos: [
+        { status: S.SOLICITADA, dias: 15 },
+        { status: S.APROVADA, dias: 14, usuario: ADM },
+        { status: S.RECEBIDA, dias: 10, usuario: ADM },
+        { status: S.MANUTENCAO, dias: 8, usuario: 'tec123' },
+      ],
+    },
+    {
+      equip: 3, avaria: 2, local: 1, dono: 'outro456', tecnico: 'tec456', osmId: 2,
+      descricao: 'Inversor desarmando por sobretemperatura.',
+      passos: [
+        { status: S.SOLICITADA, dias: 12 },
+        { status: S.APROVADA, dias: 11, usuario: ADM },
+        { status: S.RECEBIDA, dias: 9, usuario: ADM },
+        { status: S.MANUTENCAO, dias: 7, usuario: 'tec456' },
+      ],
+    },
+    {
+      equip: 4, avaria: 1, local: 1, dono: 'comum123', tecnico: 'tec123', osmId: 3,
+      laudo: 'Fusível interno substituído; aferição conforme padrão.',
+      descricao: 'Multímetro não liga mesmo com bateria nova.',
+      passos: [
+        { status: S.SOLICITADA, dias: 20 },
+        { status: S.APROVADA, dias: 19, usuario: ADM },
+        { status: S.RECEBIDA, dias: 17, usuario: ADM },
+        { status: S.MANUTENCAO, dias: 15, usuario: 'tec123' },
+        { status: S.CONCLUIDA, dias: 6, usuario: 'tec123', observacao: 'Fusível interno substituído; aferição conforme padrão.' },
+        { status: S.AGUARDANDO_RETIRADA, dias: 5, usuario: ADM },
+      ],
+    },
+    {
+      equip: 6, avaria: 7, local: 5, dono: 'comum123', tecnico: 'tec123', osmId: 4,
+      laudo: 'Relé de teste recalibrado.',
+      descricao: 'Bancada de relés com leitura instável.',
+      passos: [
+        { status: S.SOLICITADA, dias: 40 },
+        { status: S.APROVADA, dias: 39, usuario: ADM },
+        { status: S.RECEBIDA, dias: 37, usuario: ADM },
+        { status: S.MANUTENCAO, dias: 35, usuario: 'tec123' },
+        { status: S.CONCLUIDA, dias: 30, usuario: 'tec123', observacao: 'Relé de teste recalibrado.' },
+        { status: S.AGUARDANDO_RETIRADA, dias: 29, usuario: ADM },
+        { status: S.RETIRADO, dias: 25, usuario: ADM },
+      ],
+    },
+    {
+      equip: 5, avaria: 1, local: 4, dono: 'outro456',
+      descricao: 'Fonte não liga após queda de energia.',
+      passos: [{ status: S.SOLICITADA, dias: 2 }],
+    },
+  ];
+  return dados.map((d, i) => solicitacao(i + 1, d, agora));
+}
+
+/** Pedidos de peça da OSM 1 (tec123): um já recebido e um pendente. */
+export function criarPedidosIniciais(agora = Date.now()) {
+  return [
+    {
+      id: 1, ordemServicoId: 1, item: 'Rolamento 6204-2RS', quantidade: 2,
+      justificativa: 'Rolamentos com folga e ruído.', status: STATUS_PEDIDO.RECEBIDO,
+      dataPedido: diasAtras(7, agora),
+    },
+    {
+      id: 2, ordemServicoId: 1, item: 'Escova de carvão 6x10mm', quantidade: 4,
+      justificativa: 'Escovas gastas abaixo do limite.', status: STATUS_PEDIDO.SOLICITADO,
+      dataPedido: diasAtras(2, agora),
+    },
+  ];
+}
+
+/** Notificações in-app iniciais (CPTM-86). */
+export function criarNotificacoesIniciais(agora = Date.now()) {
+  return [
+    { id: 1, matricula: 'comum123', solicitacaoId: 2, lida: false, data: diasAtras(8, agora),
+      mensagem: 'SSL-2026-00002 foi DEVOLVIDA: a foto não mostra a etiqueta do equipamento.' },
+    { id: 2, matricula: 'comum123', solicitacaoId: 4, lida: false, data: diasAtras(5, agora),
+      mensagem: 'SSL-2026-00004 foi APROVADA. Leve o equipamento ao laboratório.' },
+    { id: 3, matricula: 'comum123', solicitacaoId: 10, lida: true, data: diasAtras(5, agora),
+      mensagem: 'SSL-2026-00010 está AGUARDANDO RETIRADA.' },
+    { id: 4, matricula: 'tec123', solicitacaoId: 8, lida: false, data: diasAtras(6, agora),
+      mensagem: 'Pedido de peça "Rolamento 6204-2RS" da OSM 1 foi RECEBIDO.' },
   ];
 }
