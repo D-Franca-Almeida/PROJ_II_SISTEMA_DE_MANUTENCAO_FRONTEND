@@ -216,3 +216,17 @@ export function criarPedidosIniciais(agora = Date.now()) {
     },
   ];
 }
+
+/** Notificações in-app iniciais (CPTM-86). */
+export function criarNotificacoesIniciais(agora = Date.now()) {
+  return [
+    { id: 1, matricula: 'comum123', solicitacaoId: 2, lida: false, data: diasAtras(8, agora),
+      mensagem: 'SSL-2026-00002 foi DEVOLVIDA: a foto não mostra a etiqueta do equipamento.' },
+    { id: 2, matricula: 'comum123', solicitacaoId: 4, lida: false, data: diasAtras(5, agora),
+      mensagem: 'SSL-2026-00004 foi APROVADA. Leve o equipamento ao laboratório.' },
+    { id: 3, matricula: 'comum123', solicitacaoId: 10, lida: true, data: diasAtras(5, agora),
+      mensagem: 'SSL-2026-00010 está AGUARDANDO RETIRADA.' },
+    { id: 4, matricula: 'tec123', solicitacaoId: 8, lida: false, data: diasAtras(6, agora),
+      mensagem: 'Pedido de peça "Rolamento 6204-2RS" da OSM 1 foi RECEBIDO.' },
+  ];
+}

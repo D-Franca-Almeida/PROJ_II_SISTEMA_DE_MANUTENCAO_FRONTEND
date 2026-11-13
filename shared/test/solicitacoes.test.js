@@ -158,3 +158,24 @@ test('CPTM-89: normaliza nomes alternativos do histórico', () => {
   const h = normalizarHistorico({ statusNovo: 'APROVADA', dataHora: '2026-11-01T10:00:00Z', matricula: 'admin123', motivo: 'ok' });
   assert.deepEqual(h, { status: 'APROVADA', data: '2026-11-01T10:00:00Z', usuario: 'admin123', observacao: 'ok' });
 });
+
+test('CPTM-86: notificações do usuário, marcar como lida e aviso ao dono', async () => {
+  const { api, entrarComo } = mockComSessao('comum123', PERFIL.COMUM);
+  const antes = await api.listarNotificacoes();
+  const naoLida = antes.find((n) => !n.lida);
+  assert.ok(naoLida.solicitacaoId);
+  await api.marcarNotificacaoLida(naoLida.id);
+  assert.equal((await api.listarNotificacoes()).find((n) => n.id === naoLida.id).lida, true);
+
+  entrarComo('outro456', PERFIL.COMUM);
+  await assert.rejects(api.marcarNotificacaoLida(naoLida.id), (e) => e.response.status === 403);
+
+  // técnico assume uma SSL do comum123 -> comum123 recebe notificação nova
+  entrarComo('tec123', PERFIL.TECNICO);
+  const daFila = (await api.listarFilaTecnico()).find((s) => s.matriculaSolicitante === 'comum123');
+  await api.iniciarManutencao(daFila.id);
+  entrarComo('comum123', PERFIL.COMUM);
+  const depois = await api.listarNotificacoes();
+  assert.equal(depois[0].solicitacaoId, daFila.id);
+  assert.equal(depois[0].lida, false);
+});

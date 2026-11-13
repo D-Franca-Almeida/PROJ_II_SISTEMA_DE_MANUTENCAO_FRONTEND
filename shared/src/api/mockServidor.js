@@ -18,6 +18,7 @@ import {
   LOCALIDADES,
   criarSolicitacoesIniciais,
   criarPedidosIniciais,
+  criarNotificacoesIniciais,
 } from '../mocks/dados.js';
 
 /** Erro no mesmo formato que o Axios devolve, para as telas tratarem igual. */
@@ -61,6 +62,8 @@ export function criarMockServidor({
   let proximaOsm = Math.max(0, ...solicitacoes.map((s) => s.ordemServico?.id ?? 0)) + 1;
   const pedidos = criarPedidosIniciais();
   let proximoPedido = pedidos.length + 1;
+  const notificacoes = criarNotificacoesIniciais();
+  let proximaNotificacao = notificacoes.length + 1;
 
   const esperar = () => new Promise((resolve) => setTimeout(resolve, atrasoMs));
 
@@ -123,12 +126,23 @@ export function criarMockServidor({
     return s.id;
   };
 
-  /** Mudança de status + linha no histórico. */
+  /** Mudança de status + linha no histórico; avisa o dono quando outra pessoa mexeu (CPTM-86). */
   const registrar = (s, status, observacao = null) => {
     const agora = new Date().toISOString();
+    const autor = sessao().matricula;
     s.status = status;
     s.dataStatus = agora;
-    s.historico.push({ status, data: agora, usuario: sessao().matricula, observacao });
+    s.historico.push({ status, data: agora, usuario: autor, observacao });
+    if (autor !== s.matriculaSolicitante) {
+      notificacoes.push({
+        id: proximaNotificacao++,
+        matricula: s.matriculaSolicitante,
+        solicitacaoId: s.id,
+        lida: false,
+        data: agora,
+        mensagem: `${s.numero} mudou para ${status}.${observacao ? ` ${observacao}` : ''}`,
+      });
+    }
   };
 
   /** Saída no formato da API (com DiasParaExpirar calculado). */
@@ -400,6 +414,27 @@ export function criarMockServidor({
       const s = buscar(id);
       if (!podeVerHistorico(s, sessao())) throw erroHttp(403, 'Acesso negado ao histórico desta solicitação.');
       return copia(s.historico).sort((a, b) => a.data.localeCompare(b.data));
+    },
+
+    /** CPTM-84/86: GET /notificacoes — só as do usuário logado. */
+    async listarNotificacoes() {
+      await esperar();
+      const { matricula } = sessao();
+      return notificacoes
+        .filter((n) => n.matricula === matricula)
+        .map(({ matricula: _m, ...n }) => copia(n))
+        .sort((a, b) => b.data.localeCompare(a.data));
+    },
+
+    /** CPTM-84/86: PUT /notificacoes/{id}/lida — só a própria (403). */
+    async marcarNotificacaoLida(id) {
+      await esperar();
+      const { matricula } = sessao();
+      const n = notificacoes.find((x) => x.id === Number(id));
+      if (!n) throw erroHttp(404, 'Notificação não encontrada.');
+      if (n.matricula !== matricula) throw erroHttp(403, '');
+      n.lida = true;
+      return { message: 'Notificação marcada como lida.' };
     },
 
     /** Triagem genérica (web/admin). */

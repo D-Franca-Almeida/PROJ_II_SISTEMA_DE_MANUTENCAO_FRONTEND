@@ -63,3 +63,14 @@ export const normalizarListaHistorico = (dados) =>
   (Array.isArray(dados) ? dados.map(normalizarHistorico) : []).sort((a, b) =>
     String(a.data ?? '').localeCompare(String(b.data ?? '')),
   );
+
+/** Item do GET /notificacoes (CPTM-84). */
+export function normalizarNotificacao(dto) {
+  return {
+    id: dto.id,
+    mensagem: ou(dto.mensagem, dto.texto, dto.titulo, ''),
+    solicitacaoId: ou(dto.solicitacaoId, dto.idSolicitacao),
+    lida: Boolean(dto.lida),
+    data: ou(dto.data, dto.dataCriacao, dto.dataHora),
+  };
+}
