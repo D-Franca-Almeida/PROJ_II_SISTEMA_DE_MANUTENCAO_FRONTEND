@@ -8,6 +8,7 @@ import { criarMockServidor } from './mockServidor.js';
  *   definidas no Jira — confirmar com o Diego.
  */
 export const ROTAS = Object.freeze({
+  login: '/auth/login',
   solicitacoes: '/solicitacoes',
   solicitacao: (id) => `/solicitacoes/${id}`,
   status: (id) => `/solicitacoes/${id}/status`,
@@ -43,6 +44,10 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
   const dados = (resposta) => resposta.data;
 
   return {
+    /** POST /api/auth/login { matricula, senha } -> { token } (AuthController.cs) */
+    login: (matricula, senha) =>
+      http.post(ROTAS.login, { matricula: String(matricula).trim(), senha }).then((r) => r.data.token),
+
     listarEquipamentos: () => http.get(ROTAS.equipamentos).then(dados),
     listarAvarias: () => http.get(ROTAS.avarias).then(dados),
     listarLocalidades: () => http.get(ROTAS.localidades).then(dados),
@@ -64,11 +69,32 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
   };
 }
 
-/** Extrai uma mensagem legível de um erro do Axios ou do mock. */
+const MENSAGEM_PADRAO = {
+  401: 'Sessão expirada. Entre novamente.',
+  403: 'Acesso negado: você não tem permissão para esta ação.',
+  404: 'Registro não encontrado.',
+};
+
+/**
+ * Extrai uma mensagem legível de um erro do Axios ou do mock.
+ * A API devolve { erro }, { message } ou { mensagem }; o Forbid() do .NET vem sem corpo.
+ */
 export function mensagemDeErro(erro) {
   const resposta = erro?.response;
   if (!resposta) return 'Sem conexão com o servidor. Verifique a rede e tente novamente.';
   const corpo = resposta.data;
-  if (typeof corpo === 'string' && corpo) return corpo;
-  return corpo?.mensagem ?? corpo?.title ?? `Erro ${resposta.status} ao falar com o servidor.`;
+  if (typeof corpo === 'string' && corpo.trim()) return corpo;
+  return (
+    corpo?.erro ??
+    corpo?.mensagem ??
+    corpo?.message ??
+    MENSAGEM_PADRAO[resposta.status] ??
+    corpo?.title ??
+    `Erro ${resposta.status} ao falar com o servidor.`
+  );
+}
+
+/** @param {any} erro @returns {number | null} status HTTP do erro, se houver */
+export function statusDoErro(erro) {
+  return erro?.response?.status ?? null;
 }
