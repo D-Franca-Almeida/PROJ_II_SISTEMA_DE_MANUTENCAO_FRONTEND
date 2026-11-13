@@ -1,6 +1,7 @@
 import { STATUS } from '../status.js';
 import { podeTransicionar, exigeMotivo } from '../transicoes.js';
 import { validarNovaSolicitacao } from '../validacao.js';
+import { PERFIL, gerarJwtFalso } from '../perfil.js';
 import {
   EQUIPAMENTOS,
   AVARIAS,
@@ -17,13 +18,33 @@ function erroHttp(status, mensagem) {
 
 const copia = (valor) => JSON.parse(JSON.stringify(valor));
 
+/** Mesmos usuários do AuthService.cs da API (mock da Sprint 1), mais um 2º Comum para testar 403. */
+export const USUARIOS_MOCK = Object.freeze([
+  { matricula: 'comum123', senha: 'senha', perfil: PERFIL.COMUM },
+  { matricula: 'outro456', senha: 'senha', perfil: PERFIL.COMUM },
+  { matricula: 'tec123', senha: 'senha', perfil: PERFIL.TECNICO },
+  { matricula: 'tec456', senha: 'senha', perfil: PERFIL.TECNICO },
+  { matricula: 'admin123', senha: 'senha', perfil: PERFIL.ADMINISTRATIVO },
+]);
+
 /**
  * Backend falso em memória: mesmas operações da API real, com atraso
  * de rede e regras de transição. Os dados somem ao recarregar o app.
  *
- * @param {{ atrasoMs?: number, usuario?: string }} [opcoes]
+ * `obterSessao` devolve a sessão logada ({ matricula, perfil }) — faz o papel
+ * do JWT que a API real lê das claims. Sem ela, usa `usuario` como Comum.
+ *
+ * @param {{
+ *   atrasoMs?: number,
+ *   usuario?: string,
+ *   obterSessao?: () => ({ matricula: string, perfil: string } | null),
+ * }} [opcoes]
  */
-export function criarMockServidor({ atrasoMs = 600, usuario = 'usuario.mock' } = {}) {
+export function criarMockServidor({
+  atrasoMs = 600,
+  usuario = 'usuario.mock',
+  obterSessao = () => ({ matricula: usuario, perfil: PERFIL.COMUM }),
+} = {}) {
   const solicitacoes = criarSolicitacoesIniciais();
   let proximoId = solicitacoes.length + 1;
 
@@ -34,7 +55,23 @@ export function criarMockServidor({ atrasoMs = 600, usuario = 'usuario.mock' } =
     return s;
   };
 
+  /** Sessão obrigatória, como o [Authorize] da API: sem ela, 401. */
+  const sessao = () => {
+    const atual = obterSessao();
+    if (!atual) throw erroHttp(401, 'Sessão expirada. Entre novamente.');
+    return atual;
+  };
+
   return {
+    async login(matricula, senha) {
+      await esperar();
+      const u = USUARIOS_MOCK.find(
+        (x) => x.matricula === String(matricula).trim() && x.senha === senha,
+      );
+      if (!u) throw erroHttp(401, 'Matrícula ou senha inválidos.');
+      return gerarJwtFalso({ Matricula: u.matricula, Perfil: u.perfil });
+    },
+
     async listarEquipamentos() {
       await esperar();
       return copia(EQUIPAMENTOS);
@@ -65,6 +102,7 @@ export function criarMockServidor({ atrasoMs = 600, usuario = 'usuario.mock' } =
       const erros = validarNovaSolicitacao(dados);
       if (Object.keys(erros).length) throw erroHttp(400, Object.values(erros)[0]);
 
+      const { matricula } = sessao();
       const agora = new Date().toISOString();
       const id = proximoId++;
       const nova = {
@@ -76,9 +114,9 @@ export function criarMockServidor({ atrasoMs = 600, usuario = 'usuario.mock' } =
         descricao: dados.descricao.trim(),
         fotoUrl: dados.foto?.uri ?? null,
         status: STATUS.SOLICITADA,
-        solicitante: usuario,
+        solicitante: matricula,
         dataAbertura: agora,
-        historico: [{ status: STATUS.SOLICITADA, usuario, data: agora, motivo: null }],
+        historico: [{ status: STATUS.SOLICITADA, usuario: matricula, data: agora, motivo: null }],
       };
       solicitacoes.push(nova);
       return copia(nova);
@@ -96,7 +134,7 @@ export function criarMockServidor({ atrasoMs = 600, usuario = 'usuario.mock' } =
       s.status = novoStatus;
       s.historico.push({
         status: novoStatus,
-        usuario,
+        usuario: sessao().matricula,
         data: new Date().toISOString(),
         motivo: motivo?.trim() || null,
       });
