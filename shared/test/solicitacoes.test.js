@@ -9,6 +9,7 @@ import {
   validarReenvio,
   podeCancelar,
   indicadorPrazo,
+  normalizarHistorico,
 } from '../src/index.js';
 import { mockComSessao } from './apoio.js';
 
@@ -131,4 +132,29 @@ test('CPTM-67: indicador de prazo', () => {
   assert.equal(indicadorPrazo({ status: STATUS.DEVOLVIDA, diasParaExpirar: 0 }).texto, 'Expira hoje');
   assert.equal(indicadorPrazo({ status: STATUS.SOLICITADA, diasParaExpirar: 3 }), null);
   assert.equal(indicadorPrazo({ status: STATUS.APROVADA, diasParaExpirar: null }), null);
+});
+
+test('CPTM-89: histórico cronológico; dono, Admin e técnico da OSM; outros 403', async () => {
+  const { api, entrarComo } = mockComSessao('comum123', PERFIL.COMUM);
+  const comOsm = (await api.listarMinhasSolicitacoes()).find((s) => s.ordemServico?.matriculaTecnico === 'tec123');
+
+  const historico = await api.listarHistorico(comOsm.id);
+  assert.ok(historico.length >= 4);
+  for (let i = 1; i < historico.length; i++) assert.ok(historico[i - 1].data <= historico[i].data);
+  assert.equal(historico[0].status, STATUS.SOLICITADA);
+
+  entrarComo('tec123', PERFIL.TECNICO);
+  assert.equal((await api.listarHistorico(comOsm.id)).length, historico.length);
+  entrarComo('admin123', PERFIL.ADMINISTRATIVO);
+  await api.listarHistorico(comOsm.id);
+
+  for (const [m, p] of [['outro456', PERFIL.COMUM], ['tec456', PERFIL.TECNICO]]) {
+    entrarComo(m, p);
+    await assert.rejects(api.listarHistorico(comOsm.id), (e) => e.response.status === 403);
+  }
+});
+
+test('CPTM-89: normaliza nomes alternativos do histórico', () => {
+  const h = normalizarHistorico({ statusNovo: 'APROVADA', dataHora: '2026-11-01T10:00:00Z', matricula: 'admin123', motivo: 'ok' });
+  assert.deepEqual(h, { status: 'APROVADA', data: '2026-11-01T10:00:00Z', usuario: 'admin123', observacao: 'ok' });
 });

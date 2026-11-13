@@ -76,3 +76,13 @@ export const podeAssumir = (s) => s.status === STATUS_FILA_TECNICO;
  */
 export const ehMinhaOsmAberta = (s, matricula) =>
   s.status === STATUS.MANUTENCAO && s.ordemServico?.matriculaTecnico === matricula;
+
+/**
+ * CPTM-89: histórico só para o dono, o Admin e o técnico da OSM (outros = 403).
+ * Mais restrito que podeVerSolicitacao: o técnico vê a SSL da fila, mas não o histórico.
+ */
+export function podeVerHistorico(s, sessao) {
+  if (sessao.perfil === PERFIL.ADMINISTRATIVO) return true;
+  if (s.matriculaSolicitante === sessao.matricula) return true;
+  return sessao.perfil === PERFIL.TECNICO && s.ordemServico?.matriculaTecnico === sessao.matricula;
+}

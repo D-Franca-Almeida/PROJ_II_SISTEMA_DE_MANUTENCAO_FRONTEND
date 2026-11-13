@@ -1,5 +1,5 @@
 import { criarMockServidor } from './mockServidor.js';
-import { normalizarSolicitacao, normalizarLista } from './normalizar.js';
+import { normalizarSolicitacao, normalizarLista, normalizarListaHistorico } from './normalizar.js';
 
 /**
  * Rotas da API .NET. Pendências de alinhamento:
@@ -16,6 +16,8 @@ export const ROTAS = Object.freeze({
   status: (id) => `/solicitacoes/${id}/status`,
   reenviar: (id) => `/solicitacoes/${id}/reenviar`,
   cancelar: (id) => `/solicitacoes/${id}/cancelar`,
+  // CPTM-87 (a fazer no backend)
+  historico: (id) => `/solicitacoes/${id}/historico`,
   // CPTM-70/36: existe no SolicitacoesController (hoje exige APROVADA; refinamento pede RECEBIDA)
   iniciarManutencao: (id) => `/solicitacoes/${id}/iniciar-manutencao`,
   // CPTM-71 (em andamento): prefixo a confirmar no controller
@@ -138,6 +140,9 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
 
     /** CPTM-74/76: PUT /ordens-servico/{id}/pecas/{pedidoId}/cancelar — só SOLICITADO/ENCAMINHADO */
     cancelarPedidoPeca: (osmId, pedidoId) => http.put(ROTAS.cancelarPedido(osmId, pedidoId)).then(dados),
+
+    /** CPTM-87/89: GET /solicitacoes/{id}/historico — ordem cronológica */
+    listarHistorico: (id) => http.get(ROTAS.historico(id)).then(dados).then(normalizarListaHistorico),
 
     alterarStatus: (id, status, motivo = null) =>
       http.put(ROTAS.status(id), { status, motivo }).then(dados),

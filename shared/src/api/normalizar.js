@@ -44,3 +44,22 @@ export function normalizarSolicitacao(dto) {
 
 /** @param {any} dados */
 export const normalizarLista = (dados) => (Array.isArray(dados) ? dados.map(normalizarSolicitacao) : []);
+
+/**
+ * Item do GET /solicitacoes/{id}/historico. Aceita nomes alternativos até o DTO fechar.
+ * @returns {import('../tipos.js').Historico}
+ */
+export function normalizarHistorico(dto) {
+  return {
+    status: dto.status ?? dto.statusNovo ?? '',
+    data: ou(dto.data, dto.dataHora, dto.dataAlteracao),
+    usuario: ou(dto.usuario, dto.matricula, dto.matriculaUsuario, dto.quem),
+    observacao: ou(dto.observacao, dto.motivo, dto.comentario),
+  };
+}
+
+/** Ordem cronológica (mais antigo primeiro). */
+export const normalizarListaHistorico = (dados) =>
+  (Array.isArray(dados) ? dados.map(normalizarHistorico) : []).sort((a, b) =>
+    String(a.data ?? '').localeCompare(String(b.data ?? '')),
+  );
