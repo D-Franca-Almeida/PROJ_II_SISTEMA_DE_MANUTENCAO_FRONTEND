@@ -46,3 +46,19 @@ export const STATUS_CANCELAVEIS = Object.freeze([
 
 /** @param {string} status */
 export const podeCancelar = (status) => STATUS_CANCELAVEIS.includes(status);
+
+/** CPTM-67: com N ≤ 2 dias o indicador fica vermelho. */
+export const DIAS_PRAZO_CRITICO = 2;
+
+/**
+ * Indicador "Expira em N dias" (só DEVOLVIDA e APROVADA com DiasParaExpirar).
+ * @param {{ status: string, diasParaExpirar?: number | null }} s
+ * @returns {{ texto: string, critico: boolean } | null}
+ */
+export function indicadorPrazo(s) {
+  if (s.status !== STATUS.DEVOLVIDA && s.status !== STATUS.APROVADA) return null;
+  const n = s.diasParaExpirar;
+  if (typeof n !== 'number' || Number.isNaN(n)) return null;
+  const texto = n <= 0 ? 'Expira hoje' : n === 1 ? 'Expira em 1 dia' : `Expira em ${n} dias`;
+  return { texto, critico: n <= DIAS_PRAZO_CRITICO };
+}

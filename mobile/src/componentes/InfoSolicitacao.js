@@ -4,6 +4,7 @@ import { API_URL } from '../config';
 import { cores, medidas } from '../tema';
 import { formatarDataHora, textoEquipamento, textoLocalidade } from '../formato';
 import SeloStatus from './SeloStatus';
+import IndicadorPrazo from './IndicadorPrazo';
 
 /** A API pode devolver a foto com caminho relativo (/uploads/x.jpg). */
 export function resolverFoto(url) {
@@ -41,6 +42,7 @@ export default function InfoSolicitacao({ solicitacao: s }) {
         <Text style={styles.numero} accessibilityRole="header">{s.numero}</Text>
         <SeloStatus status={s.status} />
       </View>
+      <IndicadorPrazo solicitacao={s} />
 
       {s.status === STATUS.DEVOLVIDA ? <MotivoDevolucao motivo={s.motivoDevolucao} /> : null}
 
@@ -75,9 +77,10 @@ export default function InfoSolicitacao({ solicitacao: s }) {
 }
 
 const styles = StyleSheet.create({
-  topo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12 },
+  topo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 },
   numero: { fontSize: 22, fontWeight: '800', color: cores.texto, flexShrink: 1 },
   motivo: {
+    marginTop: 8,
     backgroundColor: cores.avisoFundo,
     borderLeftWidth: 6,
     borderLeftColor: cores.aviso,
@@ -88,6 +91,7 @@ const styles = StyleSheet.create({
   motivoTitulo: { fontSize: 15, fontWeight: '800', color: cores.aviso, marginBottom: 4 },
   motivoTexto: { fontSize: 16, color: cores.texto },
   foto: {
+    marginTop: 6,
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: medidas.raio,
