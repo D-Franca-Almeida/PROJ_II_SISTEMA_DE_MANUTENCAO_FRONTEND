@@ -10,11 +10,11 @@ import { formatarDataHora } from '../formato';
 /** CPTM-86 — lista de notificações; tocar marca como lida e abre a SSL. */
 export default function Notificacoes({ navigation }) {
   const { sessao } = useAuth();
-  const { lista, carregando, erro, atualizar, marcarLida } = useNotificacoes();
+  const { lista, carregando, atualizando, erro, atualizar, marcarLida } = useNotificacoes();
 
   useFocusEffect(
     useCallback(() => {
-      atualizar();
+      atualizar(); // em segundo plano: sem spinner
     }, [atualizar]),
   );
 
@@ -30,7 +30,13 @@ export default function Notificacoes({ navigation }) {
       data={lista}
       keyExtractor={(n) => String(n.id)}
       contentContainerStyle={styles.conteudo}
-      refreshControl={<RefreshControl refreshing={carregando} onRefresh={atualizar} colors={[cores.primaria]} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={atualizando}
+          onRefresh={() => atualizar({ puxou: true })}
+          colors={[cores.primaria]}
+        />
+      }
       ListHeaderComponent={erro ? <Text style={styles.erro}>Não foi possível atualizar: {erro}</Text> : null}
       ListEmptyComponent={
         !carregando ? <Text style={styles.vazio}>Você não tem notificações.</Text> : null
