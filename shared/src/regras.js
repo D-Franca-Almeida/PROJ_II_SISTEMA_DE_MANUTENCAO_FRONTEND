@@ -1,0 +1,37 @@
+import { STATUS, DIAS_PARA_EXPIRAR } from './status.js';
+import { PERFIL } from './perfil.js';
+
+/**
+ * Regras de negócio que o front precisa conhecer para mostrar/esconder ações.
+ * Quem valida de verdade é a API; aqui é só para a UI e para o mock.
+ */
+
+const DIA = 86_400_000;
+
+/**
+ * Dias até a SSL expirar (DEVOLVIDA sem reenvio / APROVADA sem entrega).
+ * A API real manda isso pronto em DiasParaExpirar; o mock calcula aqui.
+ * @param {{ status: string, dataStatus?: string }} s
+ * @returns {number | null}
+ */
+export function calcularDiasParaExpirar(s, agora = Date.now()) {
+  if (s.status !== STATUS.DEVOLVIDA && s.status !== STATUS.APROVADA) return null;
+  if (!s.dataStatus) return null;
+  const passados = Math.floor((agora - Date.parse(s.dataStatus)) / DIA);
+  return Math.max(0, DIAS_PARA_EXPIRAR - passados);
+}
+
+/**
+ * Quem pode ver uma SSL (mesma regra da API: dono, Admin e técnico da OSM).
+ * O técnico também vê as RECEBIDAS, que formam a fila para assumir.
+ * @param {{ status: string, matriculaSolicitante: string, ordemServico?: { matriculaTecnico: string } | null }} s
+ * @param {{ matricula: string, perfil: string }} sessao
+ */
+export function podeVerSolicitacao(s, sessao) {
+  if (sessao.perfil === PERFIL.ADMINISTRATIVO) return true;
+  if (sessao.perfil === PERFIL.COMUM) return s.matriculaSolicitante === sessao.matricula;
+  if (sessao.perfil === PERFIL.TECNICO) {
+    return s.status === STATUS.RECEBIDA || s.ordemServico?.matriculaTecnico === sessao.matricula;
+  }
+  return false;
+}

@@ -11,6 +11,7 @@ import AcoesCabecalho from './AcoesCabecalho';
 import Login from '../telas/Login';
 import NovaSolicitacao from '../telas/NovaSolicitacao';
 import MinhasSolicitacoes from '../telas/MinhasSolicitacoes';
+import DetalheSolicitacao from '../telas/DetalheSolicitacao';
 import HomeTecnico from '../telas/HomeTecnico';
 
 const Stack = createNativeStackNavigator();
@@ -76,6 +77,11 @@ export default function Rotas() {
         ) : sessao.perfil === PERFIL.COMUM ? (
           <Stack.Group>
             <Stack.Screen name="InicioComum" component={AbasComum} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="DetalheSolicitacao"
+              component={DetalheSolicitacao}
+              options={{ title: 'Solicitação' }}
+            />
           </Stack.Group>
         ) : sessao.perfil === PERFIL.TECNICO ? (
           <Stack.Group>
