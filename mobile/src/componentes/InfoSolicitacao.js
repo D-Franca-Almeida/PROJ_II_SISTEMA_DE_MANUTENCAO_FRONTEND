@@ -6,7 +6,7 @@ import { formatarDataHora, textoEquipamento, textoLocalidade } from '../formato'
 import SeloStatus from './SeloStatus';
 
 /** A API pode devolver a foto com caminho relativo (/uploads/x.jpg). */
-function resolverFoto(url) {
+export function resolverFoto(url) {
   if (!url) return null;
   if (/^(https?|file|content|data):/i.test(url)) return url;
   return API_URL.replace(/\/api\/?$/, '') + (url.startsWith('/') ? url : `/${url}`);

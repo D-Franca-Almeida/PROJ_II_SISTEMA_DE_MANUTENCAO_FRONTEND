@@ -12,6 +12,7 @@ import Login from '../telas/Login';
 import NovaSolicitacao from '../telas/NovaSolicitacao';
 import MinhasSolicitacoes from '../telas/MinhasSolicitacoes';
 import DetalheSolicitacao from '../telas/DetalheSolicitacao';
+import CorrigirSolicitacao from '../telas/CorrigirSolicitacao';
 import HomeTecnico from '../telas/HomeTecnico';
 
 const Stack = createNativeStackNavigator();
@@ -81,6 +82,11 @@ export default function Rotas() {
               name="DetalheSolicitacao"
               component={DetalheSolicitacao}
               options={{ title: 'Solicitação' }}
+            />
+            <Stack.Screen
+              name="CorrigirSolicitacao"
+              component={CorrigirSolicitacao}
+              options={{ title: 'Corrigir e reenviar' }}
             />
           </Stack.Group>
         ) : sessao.perfil === PERFIL.TECNICO ? (

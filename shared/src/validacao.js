@@ -35,3 +35,25 @@ export function validarMotivo(motivo) {
   if (texto.length > LIMITES.DESCRICAO_MAX) return `Máximo de ${LIMITES.DESCRICAO_MAX} caracteres.`;
   return null;
 }
+
+export const MSG_SEM_CORRECAO = 'Faça a correção antes de reenviar.';
+
+/**
+ * Reenvio da SSL devolvida (CPTM-35): só descrição e/ou foto mudam.
+ * @param {{ descricao: string }} original
+ * @param {{ descricao: string, foto: object | null }} correcao  foto = nova foto (null = mantém)
+ * @returns {{ erros: Record<string, string>, semAlteracao: boolean }}
+ */
+export function validarReenvio(original, correcao) {
+  const descricao = (correcao.descricao ?? '').trim();
+  const mudouDescricao = descricao !== (original.descricao ?? '').trim();
+  const semAlteracao = !mudouDescricao && !correcao.foto;
+
+  const erros = {};
+  if (descricao.length < LIMITES.DESCRICAO_MIN) {
+    erros.descricao = `Descreva o problema (mínimo ${LIMITES.DESCRICAO_MIN} caracteres).`;
+  } else if (descricao.length > LIMITES.DESCRICAO_MAX) {
+    erros.descricao = `Máximo de ${LIMITES.DESCRICAO_MAX} caracteres.`;
+  }
+  return { erros, semAlteracao };
+}
