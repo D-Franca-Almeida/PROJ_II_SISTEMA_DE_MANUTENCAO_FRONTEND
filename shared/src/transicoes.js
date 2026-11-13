@@ -14,7 +14,8 @@ export const TRANSICOES = Object.freeze({
   // diagrama de sequência: o solicitante pode desistir após a devolução
   [S.DEVOLVIDA]: [S.REENVIADA, S.CANCELADA, S.EXPIRADA],
   [S.APROVADA]: [S.RECEBIDA, S.CANCELADA, S.EXPIRADA],
-  [S.RECEBIDA]: [S.SSM_GERADA],
+  // refinamento 10/11 (US-07): o técnico assume direto da RECEBIDA
+  [S.RECEBIDA]: [S.MANUTENCAO, S.SSM_GERADA],
   [S.SSM_GERADA]: [S.MANUTENCAO],
   [S.MANUTENCAO]: [S.CONCLUIDA, S.NAO_EXECUTADA],
   [S.NAO_EXECUTADA]: [S.AGUARDANDO_RETIRADA],

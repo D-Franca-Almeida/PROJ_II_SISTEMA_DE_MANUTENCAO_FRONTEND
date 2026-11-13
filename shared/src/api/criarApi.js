@@ -1,4 +1,5 @@
 import { criarMockServidor } from './mockServidor.js';
+import { normalizarSolicitacao, normalizarLista } from './normalizar.js';
 
 /**
  * Rotas da API .NET. Pendências de alinhamento:
@@ -10,6 +11,7 @@ import { criarMockServidor } from './mockServidor.js';
 export const ROTAS = Object.freeze({
   login: '/auth/login',
   solicitacoes: '/solicitacoes',
+  minhas: '/solicitacoes/minhas',
   solicitacao: (id) => `/solicitacoes/${id}`,
   status: (id) => `/solicitacoes/${id}/status`,
   equipamentos: '/equipamentos',
@@ -53,16 +55,21 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
     listarLocalidades: () => http.get(ROTAS.localidades).then(dados),
 
     listarSolicitacoes: ({ status } = {}) =>
-      http.get(ROTAS.solicitacoes, { params: status ? { status } : undefined }).then(dados),
+      http.get(ROTAS.solicitacoes, { params: status ? { status } : undefined }).then(dados).then(normalizarLista),
 
-    obterSolicitacao: (id) => http.get(ROTAS.solicitacao(id)).then(dados),
+    /** CPTM-60: GET /solicitacoes/minhas (mais recente primeiro) */
+    listarMinhasSolicitacoes: () => http.get(ROTAS.minhas).then(dados).then(normalizarLista),
+
+    /** CPTM-60: GET /solicitacoes/{id} (403 se for de outro dono) */
+    obterSolicitacao: (id) => http.get(ROTAS.solicitacao(id)).then(dados).then(normalizarSolicitacao),
 
     criarSolicitacao: (nova) =>
       http
         .post(ROTAS.solicitacoes, montarFormData(nova), {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
-        .then(dados),
+        .then(dados)
+        .then(normalizarSolicitacao),
 
     alterarStatus: (id, status, motivo = null) =>
       http.put(ROTAS.status(id), { status, motivo }).then(dados),

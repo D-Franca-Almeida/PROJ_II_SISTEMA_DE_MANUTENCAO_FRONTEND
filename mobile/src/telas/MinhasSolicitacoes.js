@@ -1,20 +1,50 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { useAuth } from '../auth/AuthContext';
-import { cores } from '../tema';
+import { useCallback } from 'react';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { api } from '../api';
+import { cores, medidas } from '../tema';
+import { useRecurso } from '../useRecurso';
+import { Carregando, ErroTela } from '../componentes/Estados';
+import CartaoSolicitacao from '../componentes/CartaoSolicitacao';
+import Botao from '../componentes/Botao';
 
-/** Placeholder — a lista entra na CPTM-61. */
-export default function MinhasSolicitacoes() {
-  const { sessao } = useAuth();
+/** CPTM-61 — lista das SSLs do Usuário Comum (mais recente primeiro, vem ordenada da API). */
+export default function MinhasSolicitacoes({ navigation }) {
+  const carregar = useCallback(() => api.listarMinhasSolicitacoes(), []);
+  const { dados, carregando, atualizando, erro, recarregar, puxarParaAtualizar } = useRecurso(carregar);
+
+  if (carregando) return <Carregando texto="Carregando suas solicitações…" />;
+  if (erro && !dados) return <ErroTela mensagem={erro.mensagem} aoTentarDeNovo={recarregar} />;
+
   return (
-    <View style={styles.centro}>
-      <Text style={styles.titulo}>Olá, {sessao?.matricula}</Text>
-      <Text style={styles.texto}>Suas solicitações aparecerão aqui.</Text>
-    </View>
+    <FlatList
+      data={dados ?? []}
+      keyExtractor={(s) => String(s.id)}
+      contentContainerStyle={styles.conteudo}
+      refreshControl={
+        <RefreshControl refreshing={atualizando} onRefresh={puxarParaAtualizar} colors={[cores.primaria]} />
+      }
+      ListHeaderComponent={
+        erro ? <Text style={styles.avisoErro}>Não foi possível atualizar: {erro.mensagem}</Text> : null
+      }
+      renderItem={({ item }) => (
+        <CartaoSolicitacao
+          solicitacao={item}
+          onPress={() => navigation.navigate('DetalheSolicitacao', { id: item.id })}
+        />
+      )}
+      ListEmptyComponent={
+        <View style={styles.vazio}>
+          <Text style={styles.textoVazio}>Você ainda não abriu nenhuma solicitação.</Text>
+          <Botao texto="Abrir solicitação" onPress={() => navigation.navigate('NovaSolicitacao')} />
+        </View>
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  centro: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 8 },
-  titulo: { fontSize: 22, fontWeight: '800', color: cores.texto },
-  texto: { fontSize: 16, color: cores.textoSecundario, textAlign: 'center' },
+  conteudo: { padding: medidas.espaco, flexGrow: 1 },
+  vazio: { flex: 1, justifyContent: 'center', gap: 16, padding: 24 },
+  textoVazio: { fontSize: 16, color: cores.textoSecundario, textAlign: 'center' },
+  avisoErro: { color: cores.erro, fontSize: 14, marginBottom: 10 },
 });

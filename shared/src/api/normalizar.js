@@ -1,0 +1,46 @@
+/**
+ * Adapta o JSON da API .NET (camelCase) ao formato usado pelas telas.
+ * É AQUI que se ajusta quando os DTOs do backend forem fechados: as telas
+ * não leem o JSON cru.
+ *
+ * Hoje a entidade Solicitacao.cs tem: id, descricao, status, motivoDevolucao,
+ * matriculaSolicitante, matriculaTecnico, dataInicioManutencao. O resto
+ * (equipamento, localidade, foto, DiasParaExpirar, OSM...) segue o contrato do Jira.
+ */
+
+const ou = (...valores) => valores.find((v) => v !== undefined && v !== null) ?? null;
+
+/** @returns {import('../tipos.js').Solicitacao} */
+export function normalizarSolicitacao(dto) {
+  if (!dto || typeof dto !== 'object') return dto;
+  const tecnico = ou(dto.ordemServico?.matriculaTecnico, dto.matriculaTecnico);
+  return {
+    id: dto.id,
+    numero: ou(dto.numero, `SSL ${dto.id}`),
+    equipamento: ou(dto.equipamento),
+    avaria: ou(dto.avaria),
+    localidade: ou(dto.localidade, dto.estacao),
+    descricao: ou(dto.descricao, ''),
+    fotoUrl: ou(dto.fotoUrl, dto.urlFoto),
+    status: dto.status,
+    motivoDevolucao: ou(dto.motivoDevolucao),
+    matriculaSolicitante: ou(dto.matriculaSolicitante, dto.solicitante),
+    dataAbertura: ou(dto.dataAbertura, dto.dataCriacao),
+    diasParaExpirar: ou(dto.diasParaExpirar),
+    ordemServico: tecnico
+      ? {
+          id: ou(dto.ordemServico?.id, dto.ordemServicoId),
+          matriculaTecnico: tecnico,
+          dataInicio: ou(dto.ordemServico?.dataInicio, dto.dataInicioManutencao),
+          dataFim: ou(dto.ordemServico?.dataFim),
+          laudo: ou(dto.ordemServico?.laudo, dto.laudo),
+          motivoNaoExecucao: ou(dto.ordemServico?.motivoNaoExecucao),
+        }
+      : null,
+    autorizacaoRetirada: ou(dto.autorizacaoRetirada),
+    historico: Array.isArray(dto.historico) ? dto.historico : [],
+  };
+}
+
+/** @param {any} dados */
+export const normalizarLista = (dados) => (Array.isArray(dados) ? dados.map(normalizarSolicitacao) : []);
