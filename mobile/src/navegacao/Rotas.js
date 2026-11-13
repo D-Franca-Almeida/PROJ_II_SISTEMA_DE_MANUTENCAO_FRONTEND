@@ -17,6 +17,7 @@ import HomeTecnico from '../telas/HomeTecnico';
 import DetalheOsm from '../telas/DetalheOsm';
 import EncerrarOsm from '../telas/EncerrarOsm';
 import PedirPeca from '../telas/PedirPeca';
+import Notificacoes from '../telas/Notificacoes';
 
 const Stack = createNativeStackNavigator();
 const Abas = createBottomTabNavigator();
@@ -33,6 +34,9 @@ const opcoesCabecalho = {
   headerTitleStyle: { fontWeight: '800' },
   headerRight: () => <AcoesCabecalho />,
 };
+
+/** Na própria tela de notificações o sino some (fica só o título). */
+const telaNotificacoes = { title: 'Notificações', headerRight: undefined };
 
 const iconeAba = (simbolo) => ({ color }) => (
   <Text style={{ fontSize: 22, color }} importantForAccessibility="no">{simbolo}</Text>
@@ -91,6 +95,7 @@ export default function Rotas() {
               component={CorrigirSolicitacao}
               options={{ title: 'Corrigir e reenviar' }}
             />
+            <Stack.Screen name="Notificacoes" component={Notificacoes} options={telaNotificacoes} />
           </Stack.Group>
         ) : sessao.perfil === PERFIL.TECNICO ? (
           <Stack.Group>
@@ -98,6 +103,7 @@ export default function Rotas() {
             <Stack.Screen name="DetalheOsm" component={DetalheOsm} options={{ title: 'Manutenção' }} />
             <Stack.Screen name="EncerrarOsm" component={EncerrarOsm} options={{ title: 'Encerrar OSM' }} />
             <Stack.Screen name="PedirPeca" component={PedirPeca} options={{ title: 'Pedido de peça' }} />
+            <Stack.Screen name="Notificacoes" component={Notificacoes} options={telaNotificacoes} />
           </Stack.Group>
         ) : (
           <Stack.Screen name="SemAcesso" options={{ title: 'CPTM SSL' }}>

@@ -47,6 +47,13 @@
  * @property {{ nome: string, documento: string } | null} autorizacaoRetirada
  * @property {Historico[]} historico
  *
+ * @typedef {Object} Notificacao  CPTM-86 (só in-app)
+ * @property {number} id
+ * @property {string} mensagem
+ * @property {number | null} solicitacaoId  SSL para abrir ao tocar
+ * @property {boolean} lida
+ * @property {string} data  ISO 8601
+ *
  * Arquivo de foto: no mobile é { uri, name, type } (React Native FormData);
  * no web é um File.
  * @typedef {{ uri: string, name: string, type: string } | Blob} ArquivoFoto

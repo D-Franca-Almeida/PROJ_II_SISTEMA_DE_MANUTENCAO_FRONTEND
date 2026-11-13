@@ -81,7 +81,7 @@ export default function DetalheOsm({ route, navigation }) {
       {s.ordemServico?.id && s.ordemServico.matriculaTecnico === sessao.matricula ? (
         <ListaPedidos osmId={s.ordemServico.id} podeAlterar={ehMinhaOsmAberta(s, sessao.matricula)} />
       ) : null}
-      <LinhaDoTempo solicitacaoId={s.id} />
+      <LinhaDoTempo key={s.status} solicitacaoId={s.id} />
     </ScrollView>
   );
 }

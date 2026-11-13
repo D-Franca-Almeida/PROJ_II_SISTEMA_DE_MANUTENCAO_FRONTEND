@@ -1,5 +1,10 @@
 import { criarMockServidor } from './mockServidor.js';
-import { normalizarSolicitacao, normalizarLista, normalizarListaHistorico } from './normalizar.js';
+import {
+  normalizarSolicitacao,
+  normalizarLista,
+  normalizarListaHistorico,
+  normalizarNotificacao,
+} from './normalizar.js';
 
 /**
  * Rotas da API .NET. Pendências de alinhamento:
@@ -27,6 +32,9 @@ export const ROTAS = Object.freeze({
   pecas: (osmId) => `/ordens-servico/${osmId}/pecas`,
   // CPTM-74 (em andamento no backend): rota de cancelamento a confirmar
   cancelarPedido: (osmId, pedidoId) => `/ordens-servico/${osmId}/pecas/${pedidoId}/cancelar`,
+  // CPTM-84 (a fazer no backend)
+  notificacoes: '/notificacoes',
+  notificacaoLida: (id) => `/notificacoes/${id}/lida`,
   // A CONFIRMAR: rotas das listas do técnico ainda não existem no backend
   minhasManutencoes: '/ordens-servico/minhas',
   equipamentos: '/equipamentos',
@@ -143,6 +151,20 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
 
     /** CPTM-87/89: GET /solicitacoes/{id}/historico — ordem cronológica */
     listarHistorico: (id) => http.get(ROTAS.historico(id)).then(dados).then(normalizarListaHistorico),
+
+    /** CPTM-84/86: GET /notificacoes — do usuário logado, mais recente primeiro */
+    listarNotificacoes: () =>
+      http
+        .get(ROTAS.notificacoes)
+        .then(dados)
+        .then((lista) =>
+          (Array.isArray(lista) ? lista.map(normalizarNotificacao) : []).sort((a, b) =>
+            String(b.data ?? '').localeCompare(String(a.data ?? '')),
+          ),
+        ),
+
+    /** CPTM-84/86: PUT /notificacoes/{id}/lida */
+    marcarNotificacaoLida: (id) => http.put(ROTAS.notificacaoLida(id)).then(dados),
 
     alterarStatus: (id, status, motivo = null) =>
       http.put(ROTAS.status(id), { status, motivo }).then(dados),

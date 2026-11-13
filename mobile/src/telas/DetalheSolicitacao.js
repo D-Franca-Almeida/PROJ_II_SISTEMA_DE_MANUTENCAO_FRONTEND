@@ -79,7 +79,7 @@ export default function DetalheSolicitacao({ route, navigation }) {
           />
         ) : null}
       </View>
-      <LinhaDoTempo solicitacaoId={s.id} />
+      <LinhaDoTempo key={s.status} solicitacaoId={s.id} />
     </ScrollView>
   );
 }
