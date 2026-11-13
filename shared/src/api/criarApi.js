@@ -14,6 +14,7 @@ export const ROTAS = Object.freeze({
   minhas: '/solicitacoes/minhas',
   solicitacao: (id) => `/solicitacoes/${id}`,
   status: (id) => `/solicitacoes/${id}/status`,
+  reenviar: (id) => `/solicitacoes/${id}/reenviar`,
   equipamentos: '/equipamentos',
   avarias: '/avarias',
   localidades: '/localidades',
@@ -30,6 +31,17 @@ export function montarFormData(dados) {
   form.append('localidadeId', String(dados.localidadeId));
   form.append('descricao', dados.descricao.trim());
   if (dados.foto) form.append('foto', /** @type {any} */ (dados.foto));
+  return form;
+}
+
+/**
+ * Multipart do PUT /solicitacoes/{id}/reenviar (CPTM-62): manda só o que mudou.
+ * @param {{ descricao?: string | null, foto?: object | null }} correcao
+ */
+export function montarFormDataReenvio({ descricao, foto }) {
+  const form = new FormData();
+  if (descricao != null) form.append('descricao', descricao.trim());
+  if (foto) form.append('foto', /** @type {any} */ (foto));
   return form;
 }
 
@@ -70,6 +82,14 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
         })
         .then(dados)
         .then(normalizarSolicitacao),
+
+    /** CPTM-62: PUT /solicitacoes/{id}/reenviar (multipart: descricao e/ou foto) -> REENVIADA */
+    reenviarSolicitacao: (id, correcao) =>
+      http
+        .put(ROTAS.reenviar(id), montarFormDataReenvio(correcao), {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        .then(dados),
 
     alterarStatus: (id, status, motivo = null) =>
       http.put(ROTAS.status(id), { status, motivo }).then(dados),

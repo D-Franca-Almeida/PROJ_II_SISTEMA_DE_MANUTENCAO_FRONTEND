@@ -1,6 +1,6 @@
 import { STATUS } from '../status.js';
 import { podeTransicionar, exigeMotivo } from '../transicoes.js';
-import { validarNovaSolicitacao } from '../validacao.js';
+import { validarNovaSolicitacao, MSG_SEM_CORRECAO } from '../validacao.js';
 import { PERFIL, gerarJwtFalso } from '../perfil.js';
 import { calcularDiasParaExpirar, podeVerSolicitacao } from '../regras.js';
 import {
@@ -77,6 +77,14 @@ export function criarMockServidor({
     if (!podeVerSolicitacao(s, sessao())) {
       throw erroHttp(403, 'Acesso negado: esta solicitação não é sua.');
     }
+    return s;
+  };
+
+  /** Ações do solicitante: só o próprio Comum (outro dono = 403, como o CancelarTriagem da API). */
+  const buscarDoDono = (id) => {
+    const { matricula } = exigirPerfil(PERFIL.COMUM);
+    const s = buscar(id);
+    if (s.matriculaSolicitante !== matricula) throw erroHttp(403, '');
     return s;
   };
 
@@ -166,6 +174,27 @@ export function criarMockServidor({
       };
       solicitacoes.push(nova);
       return saida(nova);
+    },
+
+    /**
+     * CPTM-62/35: PUT /solicitacoes/{id}/reenviar — só DEVOLVIDA, só o dono,
+     * precisa ter mudado a descrição e/ou a foto.
+     * @param {{ descricao?: string | null, foto?: { uri: string } | null }} correcao
+     */
+    async reenviarSolicitacao(id, { descricao = null, foto = null } = {}) {
+      await esperar();
+      const s = buscarDoDono(id);
+      if (s.status !== STATUS.DEVOLVIDA) {
+        throw erroHttp(400, `Só é possível reenviar uma solicitação DEVOLVIDA (status atual: ${s.status}).`);
+      }
+      const novaDescricao = descricao?.trim();
+      const mudouDescricao = !!novaDescricao && novaDescricao !== s.descricao;
+      if (!mudouDescricao && !foto) throw erroHttp(400, MSG_SEM_CORRECAO);
+
+      if (mudouDescricao) s.descricao = novaDescricao;
+      if (foto) s.fotoUrl = foto.uri ?? s.fotoUrl;
+      registrar(s, STATUS.REENVIADA, 'Corrigida pelo solicitante.');
+      return { message: 'Solicitação reenviada para a triagem.' };
     },
 
     /** Triagem genérica (web/admin). */

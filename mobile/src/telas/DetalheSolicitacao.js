@@ -1,13 +1,15 @@
 import { useCallback } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { STATUS } from '../../../shared/src/index.js';
 import { api } from '../api';
 import { cores, medidas } from '../tema';
 import { useRecurso } from '../useRecurso';
 import { Carregando, ErroTela } from '../componentes/Estados';
 import InfoSolicitacao from '../componentes/InfoSolicitacao';
+import Botao from '../componentes/Botao';
 
 /** CPTM-61 — detalhe da SSL do Usuário Comum. */
-export default function DetalheSolicitacao({ route }) {
+export default function DetalheSolicitacao({ route, navigation }) {
   const { id } = route.params;
   const carregar = useCallback(() => api.obterSolicitacao(id), [id]);
   const { dados: s, carregando, atualizando, erro, recarregar, puxarParaAtualizar } = useRecurso(carregar);
@@ -32,7 +34,14 @@ export default function DetalheSolicitacao({ route }) {
       }
     >
       <InfoSolicitacao solicitacao={s} />
-      <View style={styles.acoes} />
+      <View style={styles.acoes}>
+        {s.status === STATUS.DEVOLVIDA ? (
+          <Botao
+            texto="Corrigir e reenviar"
+            onPress={() => navigation.navigate('CorrigirSolicitacao', { id: s.id })}
+          />
+        ) : null}
+      </View>
     </ScrollView>
   );
 }

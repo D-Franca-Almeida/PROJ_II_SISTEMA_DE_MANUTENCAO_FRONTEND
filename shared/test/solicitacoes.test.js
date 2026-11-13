@@ -6,6 +6,7 @@ import {
   normalizarSolicitacao,
   calcularDiasParaExpirar,
   mensagemDeErro,
+  validarReenvio,
 } from '../src/index.js';
 import { mockComSessao } from './apoio.js';
 
@@ -60,4 +61,42 @@ test('normaliza a entidade Solicitacao.cs atual da API', () => {
   assert.equal(s.ordemServico.matriculaTecnico, 'tec123');
   assert.equal(s.ordemServico.dataInicio, '2026-11-10T10:00:00Z');
   assert.deepEqual(s.historico, []);
+});
+
+test('CPTM-35: reenvio exige correção, só DEVOLVIDA e só o dono', async () => {
+  const { api, entrarComo } = mockComSessao('comum123', PERFIL.COMUM);
+  const minhas = await api.listarMinhasSolicitacoes();
+  const devolvida = minhas.find((s) => s.status === STATUS.DEVOLVIDA);
+  const solicitada = minhas.find((s) => s.status === STATUS.SOLICITADA);
+
+  // sem alteração -> 400 com a mensagem do critério de aceite
+  await assert.rejects(
+    api.reenviarSolicitacao(devolvida.id, { descricao: devolvida.descricao, foto: null }),
+    (e) => e.response.status === 400 && mensagemDeErro(e) === 'Faça a correção antes de reenviar.',
+  );
+  // status errado -> 400
+  await assert.rejects(
+    api.reenviarSolicitacao(solicitada.id, { descricao: 'Descrição corrigida e detalhada.' }),
+    (e) => e.response.status === 400,
+  );
+  // outro dono -> 403
+  entrarComo('outro456', PERFIL.COMUM);
+  await assert.rejects(
+    api.reenviarSolicitacao(devolvida.id, { descricao: 'Tentativa de outro usuário.' }),
+    (e) => e.response.status === 403,
+  );
+
+  entrarComo('comum123', PERFIL.COMUM);
+  await api.reenviarSolicitacao(devolvida.id, { foto: { uri: 'file:///nova.jpg', name: 'n.jpg', type: 'image/jpeg' } });
+  const depois = await api.obterSolicitacao(devolvida.id);
+  assert.equal(depois.status, STATUS.REENVIADA);
+  assert.equal(depois.fotoUrl, 'file:///nova.jpg');
+});
+
+test('CPTM-35: validarReenvio detecta "sem alteração"', () => {
+  const original = { descricao: 'Inversor não energiza; display apagado.' };
+  assert.equal(validarReenvio(original, { descricao: original.descricao, foto: null }).semAlteracao, true);
+  assert.equal(validarReenvio(original, { descricao: original.descricao + ' Fusível ok.', foto: null }).semAlteracao, false);
+  assert.equal(validarReenvio(original, { descricao: original.descricao, foto: { uri: 'x' } }).semAlteracao, false);
+  assert.ok(validarReenvio(original, { descricao: 'curta', foto: null }).erros.descricao);
 });
