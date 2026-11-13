@@ -13,40 +13,63 @@ const NotificacoesContext = createContext(null);
 export function NotificacoesProvider({ children }) {
   const { sessao } = useAuth();
   const [lista, setLista] = useState([]);
+  /** primeira carga da sessão (a tela não mostra "sem notificações" enquanto isso) */
   const [carregando, setCarregando] = useState(false);
+  /** só quando a pessoa puxa a lista para atualizar (spinner do RefreshControl) */
+  const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState(null);
-  const montado = useRef(true);
+  /**
+   * Muda a cada troca de sessão (sair/entrar) e ao desmontar. Uma resposta que chega
+   * depois disso pertence a outro usuário e é descartada.
+   */
+  const geracao = useRef(0);
 
-  const atualizar = useCallback(async () => {
-    if (!sessao) return;
-    setCarregando(true);
-    try {
-      const dados = await api.listarNotificacoes();
-      if (montado.current) {
-        setLista(dados);
-        setErro(null);
+  /**
+   * Busca as notificações. Sem `puxou`, roda em segundo plano (timer, foco, app ativo)
+   * e não liga o spinner.
+   * @param {{ puxou?: boolean }} [opcoes]
+   */
+  const atualizar = useCallback(
+    async ({ puxou = false } = {}) => {
+      if (!sessao) return;
+      const minhaGeracao = geracao.current;
+      const atual = () => geracao.current === minhaGeracao;
+      if (puxou) setAtualizando(true);
+      try {
+        const dados = await api.listarNotificacoes();
+        if (atual()) {
+          setLista(dados);
+          setErro(null);
+        }
+      } catch (e) {
+        if (atual()) setErro(mensagemDeErro(e));
+      } finally {
+        if (atual()) {
+          setCarregando(false);
+          if (puxou) setAtualizando(false);
+        }
       }
-    } catch (e) {
-      if (montado.current) setErro(mensagemDeErro(e));
-    } finally {
-      if (montado.current) setCarregando(false);
-    }
-  }, [sessao]);
+    },
+    [sessao],
+  );
 
   // carrega ao entrar, a cada minuto e quando o app volta ao primeiro plano
   useEffect(() => {
-    montado.current = true;
+    setLista([]);
+    setErro(null);
+    setAtualizando(false);
     if (!sessao) {
-      setLista([]);
+      setCarregando(false);
       return undefined;
     }
+    setCarregando(true);
     atualizar();
     const timer = setInterval(atualizar, INTERVALO_MS);
     const assinatura = AppState.addEventListener('change', (estado) => {
       if (estado === 'active') atualizar();
     });
     return () => {
-      montado.current = false;
+      geracao.current += 1; // invalida respostas em andamento desta sessão
       clearInterval(timer);
       assinatura.remove();
     };
@@ -66,11 +89,12 @@ export function NotificacoesProvider({ children }) {
       lista,
       naoLidas: lista.filter((n) => !n.lida).length,
       carregando,
+      atualizando,
       erro,
       atualizar,
       marcarLida,
     }),
-    [lista, carregando, erro, atualizar, marcarLida],
+    [lista, carregando, atualizando, erro, atualizar, marcarLida],
   );
 
   return <NotificacoesContext.Provider value={valor}>{children}</NotificacoesContext.Provider>;
