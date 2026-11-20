@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Foto fictícia">
+  <rect width="800" height="600" fill="#E4E4E7"/>
+  <g fill="none" stroke="#A1A1AA" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="330" y="232" width="140" height="104" rx="12"/>
+    <path d="M372 232l12-22h32l12 22"/>
+    <circle cx="400" cy="284" r="26"/>
+  </g>
+  <text x="400" y="386" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="600" fill="#4A4A4F">Foto fictícia (modo mock)</text>
+</svg>

@@ -8,7 +8,7 @@ Fluxo de manutenção de equipamentos, da abertura com foto até a retirada apó
 | Pasta     | O quê | Stack |
 |-----------|-------|-------|
 | `mobile/` | App do Usuário Comum e do Técnico (abertura de SSL, OSM, retirada) | React Native + Expo SDK 58, Axios |
-| `web/`    | Painel do Usuário Administrativo (triagem, recepção, logística, destino) — *a criar na CPTM-34* | ReactJS + Vite + Tailwind CSS, Axios |
+| `web/`    | Painel do Usuário Administrativo e Logística (triagem, SSL por técnico, técnicos e pedidos de peças) | Next.js 16 + React 19 + TypeScript 5 + Tailwind CSS 4 + TanStack Query + Zod |
 | `shared/` | Regras comuns, **sem dependências**: 16 status, mapa de transições, tipos (JSDoc), validações, mocks e cliente da API com interruptor mock/real | JavaScript puro |
 
 Cada app tem seu próprio `node_modules` e importa o `shared/` por caminho relativo
