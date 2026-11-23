@@ -32,16 +32,16 @@ export const ROTAS = Object.freeze({
   naoExecutar: (id) => `/solicitacoes/${id}/nao-executar`,
   // CPTM-38 (a fazer no backend)
   pecas: (osmId) => `/ordens-servico/${osmId}/pecas`,
-  // CPTM-74 (em andamento no backend): rota de cancelamento a confirmar
-  cancelarPedido: (osmId, pedidoId) => `/ordens-servico/${osmId}/pecas/${pedidoId}/cancelar`,
-  // CPTM-84 (a fazer no backend)
+  // CPTM-74: rota real de cancelamento de pedido de peça no backend
+  cancelarPedido: (_osmId, pedidoId) => `/pedidos-peca/${pedidoId}/cancelar`,
+  // CPTM-84: notificações in-app
   notificacoes: '/notificacoes',
   notificacaoLida: (id) => `/notificacoes/${id}/lida`,
-  // A CONFIRMAR: rotas das listas do técnico ainda não existem no backend
+  filaTecnico: '/solicitacoes/recebidas',
   minhasManutencoes: '/ordens-servico/minhas',
   equipamentos: '/equipamentos',
   avarias: '/avarias',
-  localidades: '/localidades',
+  localidades: '/estacoes',
 });
 
 /**
@@ -118,9 +118,9 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
     /** CPTM-63: PUT /solicitacoes/{id}/cancelar (já existe no SolicitacoesController) */
     cancelarSolicitacao: (id) => http.put(ROTAS.cancelar(id)).then(dados),
 
-    /** CPTM-37: fila para assumir = SSLs RECEBIDAS. A CONFIRMAR: rota/filtro no backend. */
+    /** CPTM-37: fila para assumir = SSLs RECEBIDAS (rota exclusiva do Técnico) */
     listarFilaTecnico: () =>
-      http.get(ROTAS.solicitacoes, { params: { status: 'RECEBIDA' } }).then(dados).then(normalizarLista),
+      http.get(ROTAS.filaTecnico).then(dados).then(normalizarLista),
 
     /** CPTM-37: SSLs com OSM do técnico logado. A CONFIRMAR: rota no backend. */
     listarMinhasManutencoes: () => http.get(ROTAS.minhasManutencoes).then(dados).then(normalizarLista),
@@ -154,16 +154,17 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
     /** CPTM-87/89: GET /solicitacoes/{id}/historico — ordem cronológica */
     listarHistorico: (id) => http.get(ROTAS.historico(id)).then(dados).then(normalizarListaHistorico),
 
-    /** CPTM-84/86: GET /notificacoes — do usuário logado, mais recente primeiro */
+    /** CPTM-84/86: GET /notificacoes — backend devolve { naoLidas, notificacoes } */
     listarNotificacoes: () =>
       http
         .get(ROTAS.notificacoes)
         .then(dados)
-        .then((lista) =>
-          (Array.isArray(lista) ? lista.map(normalizarNotificacao) : []).sort((a, b) =>
-            String(b.data ?? '').localeCompare(String(a.data ?? '')),
-          ),
-        ),
+        .then((resp) => {
+          const lista = Array.isArray(resp) ? resp : (resp?.notificacoes ?? []);
+          return lista
+            .map(normalizarNotificacao)
+            .sort((a, b) => String(b.data ?? '').localeCompare(String(a.data ?? '')));
+        }),
 
     /** CPTM-84/86: PUT /notificacoes/{id}/lida */
     marcarNotificacaoLida: (id) => http.put(ROTAS.notificacaoLida(id)).then(dados),
