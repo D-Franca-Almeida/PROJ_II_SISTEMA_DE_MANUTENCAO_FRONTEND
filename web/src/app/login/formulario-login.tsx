@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Eye, EyeOff, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import { USANDO_API_REAL } from "@/lib/http";
 import { entrarNaApi } from "@/lib/login-api";
 import { inicioDe } from "@/lib/navegacao";
 import { salvarSessao, useSessao } from "@/lib/session";
@@ -39,8 +40,11 @@ export function FormularioLogin() {
     evento.preventDefault();
 
     const novos: Erros = {};
-    if (!email.trim()) novos.email = "Informe seu e-mail.";
-    else if (!/^\S+@\S+\.\S+$/.test(email.trim()))
+    if (!email.trim())
+      novos.email = USANDO_API_REAL
+        ? "Informe sua matrícula."
+        : "Informe seu e-mail.";
+    else if (!USANDO_API_REAL && !/^\S+@\S+\.\S+$/.test(email.trim()))
       novos.email = "Este e-mail não parece válido. Ex.: nome@cptm.sp.gov.br";
     if (!senha) novos.senha = "Informe sua senha.";
     if (novos.email || novos.senha) {
@@ -57,14 +61,15 @@ export function FormularioLogin() {
     <form onSubmit={enviar} noValidate className="mt-6 grid gap-4">
       <div>
         <label htmlFor={`${id}-email`} className="field-label">
-          E-mail
+          {USANDO_API_REAL ? "Matrícula" : "E-mail"}
         </label>
         <input
           ref={campoEmail}
           id={`${id}-email`}
           className="input input-lg"
-          type="email"
-          inputMode="email"
+          type={USANDO_API_REAL ? "text" : "email"}
+          inputMode={USANDO_API_REAL ? "text" : "email"}
+          placeholder={USANDO_API_REAL ? "Ex.: admin123" : undefined}
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
@@ -151,8 +156,9 @@ export function FormularioLogin() {
         Sem acesso ou esqueceu a senha? Fale com a administração do sistema.
       </p>
       <p className="text-center text-[0.8125rem] text-ink-muted">
-        MODO MOCK — use admin@cptm.example ou logistica@cptm.example com a senha
-        “senha”.
+        {USANDO_API_REAL
+          ? "AMBIENTE EM NUVEM AZURE — use a matrícula admin123 com a senha “senha”."
+          : "MODO MOCK — use admin@cptm.example ou logistica@cptm.example com a senha “senha”."}
       </p>
     </form>
   );

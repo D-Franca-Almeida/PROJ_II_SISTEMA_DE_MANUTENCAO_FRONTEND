@@ -5,7 +5,9 @@ import { encerrarSessao, getToken } from "@/lib/session";
  * "this app's own mock routes"; set NEXT_PUBLIC_API_BASE_URL to point at the
  * real backend.
  */
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
+export const API_BASE = BASE;
+export const USANDO_API_REAL = BASE.length > 0;
 
 export class ApiError extends Error {
   constructor(

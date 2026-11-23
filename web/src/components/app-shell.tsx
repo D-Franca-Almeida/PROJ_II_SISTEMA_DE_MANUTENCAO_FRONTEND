@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
 import logoCptm from "@/assets/Cptm_icon.svg.webp";
 import { inicioDe, podeAbrir } from "@/lib/navegacao";
+import { USANDO_API_REAL } from "@/lib/http";
 import { encerrarSessao, useSessao } from "@/lib/session";
 import { SidebarNav } from "./sidebar-nav";
 
@@ -64,8 +65,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
 
         <span className="badge badge-environment ml-auto">
-          Modo mock
-          <span className="hidden md:inline">&nbsp;— dados fictícios</span>
+          {USANDO_API_REAL ? (
+            <>
+              Nuvem Azure
+              <span className="hidden md:inline">&nbsp;— API em produção</span>
+            </>
+          ) : (
+            <>
+              Modo mock
+              <span className="hidden md:inline">&nbsp;— dados fictícios</span>
+            </>
+          )}
         </span>
         <span className="flex items-center gap-2 text-[0.9375rem] font-semibold">
           <User size={20} aria-hidden="true" className="shrink-0" />
