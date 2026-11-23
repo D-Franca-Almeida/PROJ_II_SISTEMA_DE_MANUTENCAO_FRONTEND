@@ -1,4 +1,5 @@
 import { criarMockServidor } from './mockServidor.js';
+import { AVARIAS } from '../mocks/dados.js';
 import {
   normalizarSolicitacao,
   normalizarLista,
@@ -80,15 +81,52 @@ export function criarApi({ http, usarMock = false, mock } = {}) {
   if (!http) throw new Error('criarApi: informe "http" (instância do Axios) ou usarMock: true.');
 
   const dados = (resposta) => resposta.data;
+  const normalizarEstacao = (e) => ({
+    id: e.id,
+    sigla: e.sigla ?? e.linha ?? 'CPTM',
+    nome: e.nome,
+  });
+  const normalizarEquipamento = (eq) => ({
+    id: eq.id,
+    estacaoId: eq.estacaoId,
+    codigo: eq.codigo ?? eq.patrimonio ?? String(eq.id),
+    descricao: eq.descricao,
+  });
 
   return {
     /** POST /api/auth/login { matricula, senha } -> { token } (AuthController.cs) */
     login: (matricula, senha) =>
       http.post(ROTAS.login, { matricula: String(matricula).trim(), senha }).then((r) => r.data.token),
 
-    listarEquipamentos: () => http.get(ROTAS.equipamentos).then(dados),
-    listarAvarias: () => http.get(ROTAS.avarias).then(dados),
-    listarLocalidades: () => http.get(ROTAS.localidades).then(dados),
+    listarEquipamentos: async (estacaoId) => {
+      if (estacaoId != null) {
+        const lista = await http.get(ROTAS.equipamentos, { params: { estacaoId } }).then(dados);
+        return (Array.isArray(lista) ? lista : []).map(normalizarEquipamento);
+      }
+      const estacoes = await http.get(ROTAS.localidades).then(dados);
+      const listas = await Promise.all(
+        (Array.isArray(estacoes) ? estacoes : []).map((e) =>
+          http.get(ROTAS.equipamentos, { params: { estacaoId: e.id } }).then(dados),
+        ),
+      );
+      return listas.flat().map(normalizarEquipamento);
+    },
+
+    listarAvarias: () =>
+      http
+        .get(ROTAS.avarias)
+        .then(dados)
+        .catch((erro) => {
+          const status = erro?.response?.status;
+          if (status === 404 || status === 405) return AVARIAS;
+          throw erro;
+        }),
+
+    listarLocalidades: () =>
+      http
+        .get(ROTAS.localidades)
+        .then(dados)
+        .then((lista) => (Array.isArray(lista) ? lista.map(normalizarEstacao) : [])),
 
     listarSolicitacoes: ({ status } = {}) =>
       http.get(ROTAS.solicitacoes, { params: status ? { status } : undefined }).then(dados).then(normalizarLista),
